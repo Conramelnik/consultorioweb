@@ -13,6 +13,7 @@ import {
   doc,
   updateDoc,
   getDoc,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 // Config Firebase
@@ -33,6 +34,9 @@ const db = getFirestore(app);
 const mainContent = document.getElementById("mainContent");
 let listaPacientes = [];
 let listaTurnos = [];
+let paginaActualTurnos = 1;
+const turnosPorPagina = 20;
+let turnosFiltrados = [];
 
 let calendar;
 
@@ -466,79 +470,149 @@ async function cargarPacientesSelect() {
   });
 }
 
-async function cargarTurnos() {
+async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
   const tablaTurnos = document.getElementById("tablaTurnos");
-  if (!tablaTurnos) return;
+  const paginacion = document.getElementById("paginacionTurnos");
+  if (!tablaTurnos || !paginacion) return;
+
   tablaTurnos.innerHTML = "";
+  paginacion.innerHTML = "";
 
   try {
     const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const turnos = [];
+    const hoyFecha = new Date();
     turnosSnapshot.forEach((doc) => {
       const t = doc.data();
+      const turnoFecha = new Date(`${t.fecha}T${t.hora}`);
+      if (turnoFecha >= hoyFecha || t.fecha === hoy()) {
+        turnos.push({ id: doc.id, ...t });
+      }
+    });
+
+    // Ordenar por fecha y hora
+    turnos.sort((a, b) => {
+      const fechaA = `${a.fecha}T${a.hora}`;
+      const fechaB = `${b.fecha}T${b.hora}`;
+      return fechaA.localeCompare(fechaB);
+    });
+
+    const totalPaginas = Math.ceil(turnos.length / porPagina);
+    const desde = (pagina - 1) * porPagina;
+    const hasta = desde + porPagina;
+    const turnosPagina = turnos.slice(desde, hasta);
+
+    for (const t of turnosPagina) {
       const fila = document.createElement("tr");
       fila.innerHTML = `
         <td>${t.fecha}</td>
         <td>${t.hora}</td>
         <td>${t.pacienteNombre}</td>
-        <td>${t.tipoConsulta}</td>
-        <td>${t.asistio ? "Sí" : "No"}</td>
+        <td>${t.tipoConsulta || "-"}</td>
+        <td>${t.asistio ? "Sí" : t.cancelado ? "Cancelado" : "No"}</td>
         <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
-        <td>
-          <button class="btn btn-sm btn-success btn-asistio" data-id="${
-            doc.id
-          }">Marcar Asistencia</button>
-        </td>
+       <td>
+  ${
+    t.asistio
+      ? '<span class="text-success fw-bold">Asistió</span>'
+      : t.cancelado
+      ? '<span class="text-warning fw-bold">Cancelado</span>'
+      : `
+        <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}">Asistió</button>
+        <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}">Cancelado</button>
+        <button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}">Eliminar</button>
+      `
+  }
+</td>
+
       `;
       tablaTurnos.appendChild(fila);
-    });
+    }
 
+    // Eventos botones
     document.querySelectorAll(".btn-asistio").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const turnoId = e.target.dataset.id;
-        const monto = prompt(
-          "Ingrese monto abonado por el paciente (0 si no abonó):",
-          "0"
-        );
+        const monto = prompt("Monto abonado:", "0");
         if (monto === null) return;
-
         const montoNum = parseFloat(monto);
         if (isNaN(montoNum) || montoNum < 0) {
           alert("Monto inválido.");
           return;
         }
 
-        const asistio = confirm("¿El paciente asistió al turno?");
-        try {
-          await updateDoc(doc(db, "turnos", turnoId), {
-            asistio,
-            montoAbonado: montoNum,
+        const turnoDocRef = doc(db, "turnos", turnoId);
+        const turnoSnap = await getDoc(turnoDocRef);
+        const turno = turnoSnap.data();
+
+        await updateDoc(turnoDocRef, {
+          asistio: true,
+          montoAbonado: montoNum,
+        });
+
+        if (montoNum > 0) {
+          await addDoc(collection(db, "caja"), {
+            fecha: hoy(),
+            monto: montoNum,
+            pacienteNombre: turno.pacienteNombre,
+            tipoConsulta: turno.tipoConsulta || "-",
+            detalle: "Pago turno",
           });
+        }
 
-          if (asistio && montoNum > 0) {
-            const turnoRef = doc(db, "turnos", turnoId);
-            const turnoSnap = await getDoc(turnoRef);
-            const turnoData = turnoSnap.exists() ? turnoSnap.data() : null;
+        alert("Asistencia registrada.");
+        cargarTurnosPaginados(pagina); // recargar página actual
+      });
+    });
 
-            await addDoc(collection(db, "caja"), {
-              fecha: new Date().toISOString().slice(0, 10),
-              monto: montoNum,
-              pacienteNombre: turnoData?.pacienteNombre || "-",
-              tipoConsulta: turnoData?.tipoConsulta || "-",
-              detalle: "Pago turno",
-            });
-          }
+    document.querySelectorAll(".btn-cancelar").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const turnoId = e.target.dataset.id;
+        if (!confirm("¿Marcar este turno como cancelado?")) return;
+        await updateDoc(doc(db, "turnos", turnoId), { cancelado: true });
+        alert("Turno cancelado.");
+        cargarTurnosPaginados(pagina);
+      });
+    });
 
-          alert("Turno actualizado.");
-          cargarTurnos();
+    document.querySelectorAll(".btn-eliminar").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const turnoId = e.target.dataset.id;
+        if (!confirm("¿Eliminar este turno?")) return;
+
+        try {
+          await deleteDoc(doc(db, "turnos", turnoId));
+          alert("Turno eliminado.");
+
+          // ✅ Recalcular la página actual según el botón activo
+          const btnActivo = document.querySelector(
+            "#paginacionTurnos .btn-primary"
+          );
+          const paginaActual = btnActivo ? parseInt(btnActivo.textContent) : 1;
+
+          // 🔁 Volver a cargar la página actual
+          cargarTurnosPaginados(paginaActual);
         } catch (error) {
-          alert("Error actualizando turno: " + error.message);
+          alert("Error al eliminar turno: " + error.message);
         }
       });
     });
+
+    // Paginación
+    for (let i = 1; i <= totalPaginas; i++) {
+      const btn = document.createElement("button");
+      btn.className = `btn btn-sm mx-1 ${
+        i === pagina ? "btn-primary" : "btn-outline-primary"
+      }`;
+      btn.textContent = i;
+      btn.addEventListener("click", () => cargarTurnosPaginados(i));
+      paginacion.appendChild(btn);
+    }
   } catch (error) {
     alert("Error al cargar turnos: " + error.message);
   }
 }
+
 async function obtenerEventosDelDia(fecha) {
   const eventos = [];
   try {
@@ -619,11 +693,13 @@ function mostrarAgendaTurnos() {
         </tr>
       </thead>
       <tbody id="tablaTurnos"></tbody>
+      <div id="paginacionTurnos" class="my-3 d-flex justify-content-center align-items-center"></div>
+
     </table>
   `;
 
   cargarPacientesSelect();
-  cargarTurnos();
+  cargarTurnosPaginados();
 
   document.getElementById("formTurno").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -677,7 +753,7 @@ function mostrarAgendaTurnos() {
         duracionMinutos: duracion,
       });
       alert("Turno agregado.");
-      cargarTurnos();
+      cargarTurnosPaginados();
       e.target.reset();
     } catch (error) {
       alert("Error al agregar turno: " + error.message);
