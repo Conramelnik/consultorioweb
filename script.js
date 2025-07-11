@@ -1,3 +1,8 @@
+// Función auxiliar para obtener fecha hoy en formato YYYY-MM-DD
+function hoy() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 // Import Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
@@ -7,9 +12,10 @@ import {
   getDocs,
   doc,
   updateDoc,
+  getDoc,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-// Config Firebase (tu configuración)
+// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAQwEe9C-ruCZ6TX612zA6FhkxZUJ2rVoc",
   authDomain: "consultoriosapp-f7f08.firebaseapp.com",
@@ -25,32 +31,332 @@ const db = getFirestore(app);
 
 // Referencias globales
 const mainContent = document.getElementById("mainContent");
+let listaPacientes = [];
+let listaTurnos = [];
 
-// --- Gestión de Pacientes ---
+let calendar;
+
+async function mostrarInicio() {
+  mainContent.innerHTML = `
+    <h1 class="mb-4">Inicio - Agenda</h1>
+    <div class="d-flex align-items-center mb-3 gap-2">
+      <button id="btnVerSemana" class="btn btn-outline-primary btn-sm">Ver Semana</button>
+      <button id="btnVerDia" class="btn btn-outline-primary btn-sm">Ver Día</button>
+      <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
+    </div>
+
+    <div id="estadisticas" class="mb-4 d-flex gap-3 flex-wrap">
+      <div class="card flex-fill border-primary text-center p-3">
+        <h5 class="text-primary">Turnos del día</h5>
+        <p id="turnosDia" class="fs-4 mb-0">-</p>
+      </div>
+      <div class="card flex-fill border-success text-center p-3">
+        <h5 class="text-success">Pacientes atendidos</h5>
+        <p id="pacientesAtendidos" class="fs-4 mb-0">-</p>
+      </div>
+      <div class="card flex-fill border-warning text-center p-3">
+        <h5 class="text-warning">Pacientes restantes</h5>
+        <p id="pacientesRestantes" class="fs-4 mb-0">-</p>
+      </div>
+      <div class="card flex-fill border-info text-center p-3">
+        <h5 class="text-info">Ingresos del día</h5>
+        <p id="ingresosDia" class="fs-4 mb-0">$ -</p>
+      </div>
+    </div>
+<div class="mb-3">
+  <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." />
+</div>
+<div id="resultadosBusqueda" class="mt-2"></div>
+
+    <div id="calendar" style="height: 600px; overflow-y: auto; border: 1px solid #ddd;"></div>
+  `;
+  await cargarTodosPacientes();
+  await cargarTodosTurnos();
+
+  const selectorFecha = document.getElementById("selectorFecha");
+  selectorFecha.value = new Date().toISOString().slice(0, 10);
+
+  // Inicializar calendario
+  const calendarEl = document.getElementById("calendar");
+  calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: "timeGridWeek",
+    initialDate: selectorFecha.value,
+    slotDuration: "00:15:00",
+    allDaySlot: false,
+    height: "600",
+    expandRows: true,
+    headerToolbar: false,
+    slotLabelInterval: "01:00",
+    nowIndicator: true,
+    slotMinTime: "07:00:00",
+    slotMaxTime: "22:00:00",
+    eventOverlap: false, // 👈 ESTA ES LA LÍNEA CLAVE
+
+    // 👇 Esta parte carga eventos dinámicamente desde Firestore
+    events: async function (info, successCallback, failureCallback) {
+      const fecha = selectorFecha.value;
+      const eventos = await obtenerEventosDelDia(fecha);
+      successCallback(eventos);
+    },
+  });
+
+  calendar.render();
+  const inputBusqueda = document.getElementById("busquedaPaciente");
+  const resultadosBusqueda = document.getElementById("resultadosBusqueda");
+
+  inputBusqueda.addEventListener("input", async (e) => {
+    const texto = e.target.value.trim().toLowerCase();
+    resultadosBusqueda.innerHTML = "";
+
+    if (texto.length < 3) {
+      resultadosBusqueda.innerHTML = "";
+      return;
+    }
+    const pacientesEncontrados = [];
+    const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
+    pacientesSnapshot.forEach((doc) => {
+      const p = doc.data();
+      const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
+      const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
+      const dni = p.dni?.toString().toLowerCase() || "";
+      if (
+        nombreCompleto.includes(texto) ||
+        nombreInvertido.includes(texto) ||
+        dni.includes(texto)
+      ) {
+        pacientesEncontrados.push({ id: doc.id, ...p });
+      }
+    });
+
+    if (pacientesEncontrados.length === 0) {
+      resultadosBusqueda.innerHTML = "<p>No se encontraron pacientes.</p>";
+      return;
+    }
+
+    let html = "<ul class='list-group'>";
+    for (const paciente of pacientesEncontrados) {
+      const turnosSnap = await getDocs(collection(db, "turnos"));
+      const turnos = [];
+      turnosSnap.forEach((docu) => {
+        const t = docu.data();
+        if (t.pacienteId === paciente.id) {
+          turnos.push(t);
+        }
+      });
+
+      html += `<li class="list-group-item">
+        <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
+        <em>Turnos:</em>
+        <ul>`;
+      if (turnos.length === 0) {
+        html += "<li>No tiene turnos.</li>";
+      } else {
+        turnos.forEach((t) => {
+          html += `<li>${t.fecha} ${t.hora} - ${
+            t.tipoConsulta || "Consulta"
+          }</li>`;
+        });
+      }
+      html += "</ul></li>";
+    }
+    html += "</ul>";
+    resultadosBusqueda.innerHTML = html;
+  });
+
+  // Eventos botones y selector
+  document.getElementById("btnVerSemana").addEventListener("click", () => {
+    calendar.changeView("timeGridWeek");
+  });
+
+  document.getElementById("btnVerDia").addEventListener("click", () => {
+    calendar.changeView("timeGridDay");
+  });
+
+  selectorFecha.addEventListener("change", (e) => {
+    calendar.gotoDate(e.target.value);
+    calcularEstadisticas(e.target.value);
+  });
+
+  // Mostrar estadísticas para la fecha inicial
+  calcularEstadisticas(selectorFecha.value);
+}
+
+async function calcularEstadisticas(fechaSeleccionada) {
+  const hoy = fechaSeleccionada;
+
+  try {
+    // 1. Cargar turnos del día
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const turnosDelDia = [];
+    turnosSnapshot.forEach((doc) => {
+      const turno = doc.data();
+      if (turno.fecha === hoy) turnosDelDia.push(turno);
+    });
+
+    // 2. Pacientes atendidos y restantes
+    const pacientesAtendidos = turnosDelDia.filter(
+      (t) => t.asistio === true
+    ).length;
+    const pacientesRestantes = turnosDelDia.length - pacientesAtendidos;
+
+    // 3. Ingresos del día
+    const cajaSnapshot = await getDocs(collection(db, "caja"));
+    let ingresosDia = 0;
+    cajaSnapshot.forEach((doc) => {
+      const mov = doc.data();
+      if (mov.fecha === hoy && mov.monto) ingresosDia += mov.monto;
+    });
+
+    // Actualizar HTML
+    document.getElementById("turnosDia").textContent = turnosDelDia.length;
+    document.getElementById("pacientesAtendidos").textContent =
+      pacientesAtendidos;
+    document.getElementById("pacientesRestantes").textContent =
+      pacientesRestantes;
+    document.getElementById(
+      "ingresosDia"
+    ).textContent = `$ ${ingresosDia.toLocaleString("es-AR")}`;
+  } catch (error) {
+    console.error("Error calculando estadísticas:", error);
+  }
+}
+
+// --- GESTIÓN PACIENTES ---
+// Carga todos los pacientes y guarda en listaPacientes
+async function cargarTodosPacientes() {
+  listaPacientes = [];
+  const snapshot = await getDocs(collection(db, "pacientes"));
+  snapshot.forEach((doc) => {
+    listaPacientes.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+// Carga todos los turnos y guarda en listaTurnos
+async function cargarTodosTurnos() {
+  listaTurnos = [];
+  const snapshot = await getDocs(collection(db, "turnos"));
+  snapshot.forEach((doc) => {
+    listaTurnos.push({ id: doc.id, ...doc.data() });
+  });
+}
+
 async function cargarPacientes() {
   const tablaPacientes = document.getElementById("tablaPacientes");
   if (!tablaPacientes) return;
   tablaPacientes.innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "pacientes"));
-  let pacientes = [];
-  querySnapshot.forEach((doc) => {
-    pacientes.push({ id: doc.id, ...doc.data() });
-  });
-  pacientes.sort((a, b) => a.apellido.localeCompare(b.apellido));
-  pacientes.forEach((p) => {
-    const fila = document.createElement("tr");
-    fila.innerHTML = `
-      <td>${p.apellido}</td>
-      <td>${p.nombre}</td>
-      <td>${p.dni}</td>
-      <td>${p.telefono || "-"}</td>
-      <td>${p.direccion || "-"}</td>
-      <td>${p.obraSocial || "-"}</td>
-      <td>${p.genero || "-"}</td>
-      <td>${p.fechaNacimiento || "-"}</td>
-    `;
-    tablaPacientes.appendChild(fila);
-  });
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "pacientes"));
+    let pacientes = [];
+    querySnapshot.forEach((doc) => {
+      pacientes.push({ id: doc.id, ...doc.data() });
+    });
+    pacientes.sort((a, b) => a.apellido.localeCompare(b.apellido));
+    pacientes.forEach((p) => {
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+    <td>${p.apellido}</td>
+    <td>${p.nombre}</td>
+    <td>${p.dni}</td>
+    <td>${p.telefono || "-"}</td>
+    <td>${p.direccion || "-"}</td>
+    <td>${p.obraSocial || "-"}</td>
+    <td>${p.genero || "-"}</td>
+    <td>${p.fechaNacimiento || "-"}</td>
+    <td>${p.fechaIngreso || "-"}</td>
+    <td>
+      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
+        p.id
+      }">Ver ficha</button>
+    </td>
+  `;
+      tablaPacientes.appendChild(fila);
+    });
+
+    // Botones "Ver ficha"
+    document.querySelectorAll(".ver-ficha").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const pacienteId = e.target.dataset.id;
+        if (!pacienteId) return;
+
+        const pacienteRef = doc(db, "pacientes", pacienteId);
+        const pacienteSnap = await getDoc(pacienteRef);
+        if (!pacienteSnap.exists()) {
+          alert("Paciente no encontrado");
+          return;
+        }
+        const paciente = pacienteSnap.data();
+
+        // Llenar modal
+        document.getElementById("fichaNombreCompleto").textContent =
+          paciente.apellido + ", " + paciente.nombre;
+        document.getElementById("fichaDNI").textContent = paciente.dni || "-";
+        document.getElementById("fichaTelefono").textContent =
+          paciente.telefono || "-";
+        document.getElementById("fichaDireccion").textContent =
+          paciente.direccion || "-";
+        document.getElementById("fichaObraSocial").textContent =
+          paciente.obraSocial || "-";
+        document.getElementById("fichaGenero").textContent =
+          paciente.genero || "-";
+        document.getElementById("fichaFechaNacimiento").textContent =
+          paciente.fechaNacimiento || "-";
+
+        // Vaciar listas
+        const ulTurnos = document.getElementById("fichaTurnos");
+        const ulPagos = document.getElementById("fichaPagos");
+        const ulNotas = document.getElementById("fichaNotas");
+        const ulArchivos = document.getElementById("fichaArchivos");
+        ulTurnos.innerHTML = "";
+        ulPagos.innerHTML = "";
+        ulNotas.innerHTML = "";
+        ulArchivos.innerHTML = "";
+
+        // Cargar turnos del paciente
+        const turnosSnap = await getDocs(collection(db, "turnos"));
+        turnosSnap.forEach((docu) => {
+          const turno = docu.data();
+          if (turno.pacienteId === pacienteId) {
+            const li = document.createElement("li");
+            li.classList.add("list-group-item");
+            li.textContent = `${turno.fecha} ${turno.hora} - ${
+              turno.tipoConsulta
+            } - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${
+              turno.montoAbonado?.toFixed(2) || "0.00"
+            }`;
+            ulTurnos.appendChild(li);
+          }
+        });
+
+        // Cargar pagos del paciente
+        const cajaSnap = await getDocs(collection(db, "caja"));
+        cajaSnap.forEach((docu) => {
+          const pago = docu.data();
+          if (
+            pago.pacienteNombre ===
+            paciente.apellido + " " + paciente.nombre
+          ) {
+            const li = document.createElement("li");
+            li.classList.add("list-group-item");
+            li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${
+              pago.tipoConsulta || "-"
+            }`;
+            ulPagos.appendChild(li);
+          }
+        });
+
+        // Notas y archivos: por ahora vacío
+
+        // Mostrar modal Bootstrap
+        const modalFicha = new bootstrap.Modal(
+          document.getElementById("modalFichaPaciente")
+        );
+        modalFicha.show();
+      });
+    });
+  } catch (error) {
+    alert("Error al cargar pacientes: " + error.message);
+  }
 }
 
 function mostrarGestionPacientes() {
@@ -110,6 +416,7 @@ function mostrarGestionPacientes() {
           <th>Obra Social</th>
           <th>Género</th>
           <th>Fecha Nac.</th>
+          <th>Fecha Ing.</th>
         </tr>
       </thead>
       <tbody id="tablaPacientes"></tbody>
@@ -128,7 +435,9 @@ function mostrarGestionPacientes() {
       obraSocial: document.getElementById("obraSocial").value.trim(),
       genero: document.getElementById("genero").value,
       fechaNacimiento: document.getElementById("fechaNacimiento").value,
+      fechaIngreso: new Date().toISOString().slice(0, 10), // <--- esta línea es la que tenés que agregar
     };
+
     try {
       await addDoc(collection(db, "pacientes"), paciente);
       alert("Paciente guardado correctamente");
@@ -141,8 +450,8 @@ function mostrarGestionPacientes() {
 
   cargarPacientes();
 }
+// --- GESTIÓN TURNOS ---
 
-// --- Gestión de Turnos ---
 async function cargarPacientesSelect() {
   const pacienteSelect = document.getElementById("pacienteSelect");
   if (!pacienteSelect) return;
@@ -161,113 +470,149 @@ async function cargarTurnos() {
   const tablaTurnos = document.getElementById("tablaTurnos");
   if (!tablaTurnos) return;
   tablaTurnos.innerHTML = "";
-  const turnosSnapshot = await getDocs(collection(db, "turnos"));
-  turnosSnapshot.forEach((doc) => {
-    const t = doc.data();
-    const fila = document.createElement("tr");
-    fila.innerHTML = `
-      <td>${t.fecha}</td>
-      <td>${t.hora}</td>
-      <td>${t.pacienteNombre}</td>
-      <td>${t.tipoConsulta}</td>
-      <td>${t.asistio ? "Sí" : "No"}</td>
-      <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
-      <td>
-        <button class="btn btn-sm btn-success btn-asistio" data-id="${
-          doc.id
-        }">Marcar Asistencia</button>
-      </td>
-    `;
-    tablaTurnos.appendChild(fila);
-  });
 
-  document.querySelectorAll(".btn-asistio").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const turnoId = e.target.dataset.id;
-      const monto = prompt(
-        "Ingrese monto abonado por el paciente (0 si no abonó):",
-        "0"
-      );
-      if (monto === null) return;
-      const montoNum = parseFloat(monto);
-      if (isNaN(montoNum) || montoNum < 0) {
-        alert("Monto inválido.");
-        return;
-      }
-      const asistio = confirm("¿El paciente asistió al turno?");
-      try {
-        // Actualizo turno
-        await updateDoc(doc(db, "turnos", turnoId), {
-          asistio,
-          montoAbonado: montoNum,
-        });
-        // Si asistió y monto > 0, guardo ingreso en caja con detalle
-        if (asistio && montoNum > 0) {
-          // Traer turno para detalle
-          const turnoDoc = await getDocs(collection(db, "turnos"));
-          const turnoRef = doc(db, "turnos", turnoId);
-          const turnoSnap = await turnoRef.get();
-          const turnoData = turnoSnap.exists() ? turnoSnap.data() : null;
+  try {
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    turnosSnapshot.forEach((doc) => {
+      const t = doc.data();
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${t.fecha}</td>
+        <td>${t.hora}</td>
+        <td>${t.pacienteNombre}</td>
+        <td>${t.tipoConsulta}</td>
+        <td>${t.asistio ? "Sí" : "No"}</td>
+        <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
+        <td>
+          <button class="btn btn-sm btn-success btn-asistio" data-id="${
+            doc.id
+          }">Marcar Asistencia</button>
+        </td>
+      `;
+      tablaTurnos.appendChild(fila);
+    });
 
-          await addDoc(collection(db, "caja"), {
-            fecha: new Date().toISOString().slice(0, 10),
-            monto: montoNum,
-            pacienteNombre: turnoData?.pacienteNombre || "-",
-            tipoConsulta: turnoData?.tipoConsulta || "-",
-            turnoId,
-          });
+    document.querySelectorAll(".btn-asistio").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const turnoId = e.target.dataset.id;
+        const monto = prompt(
+          "Ingrese monto abonado por el paciente (0 si no abonó):",
+          "0"
+        );
+        if (monto === null) return;
+
+        const montoNum = parseFloat(monto);
+        if (isNaN(montoNum) || montoNum < 0) {
+          alert("Monto inválido.");
+          return;
         }
-        alert("Turno actualizado y caja actualizada.");
-        cargarTurnos();
-      } catch (error) {
-        alert("Error al actualizar turno y caja: " + error.message);
+
+        const asistio = confirm("¿El paciente asistió al turno?");
+        try {
+          await updateDoc(doc(db, "turnos", turnoId), {
+            asistio,
+            montoAbonado: montoNum,
+          });
+
+          if (asistio && montoNum > 0) {
+            const turnoRef = doc(db, "turnos", turnoId);
+            const turnoSnap = await getDoc(turnoRef);
+            const turnoData = turnoSnap.exists() ? turnoSnap.data() : null;
+
+            await addDoc(collection(db, "caja"), {
+              fecha: new Date().toISOString().slice(0, 10),
+              monto: montoNum,
+              pacienteNombre: turnoData?.pacienteNombre || "-",
+              tipoConsulta: turnoData?.tipoConsulta || "-",
+              detalle: "Pago turno",
+            });
+          }
+
+          alert("Turno actualizado.");
+          cargarTurnos();
+        } catch (error) {
+          alert("Error actualizando turno: " + error.message);
+        }
+      });
+    });
+  } catch (error) {
+    alert("Error al cargar turnos: " + error.message);
+  }
+}
+async function obtenerEventosDelDia(fecha) {
+  const eventos = [];
+  try {
+    const snapshot = await getDocs(collection(db, "turnos"));
+    snapshot.forEach((doc) => {
+      const turno = doc.data();
+      if (turno.fecha === fecha) {
+        const start = new Date(`${turno.fecha}T${turno.hora}`);
+        const duracionMinutos = Number(turno.duracionMinutos);
+        const minutosFinal = isNaN(duracionMinutos) ? 15 : duracionMinutos;
+        const end = new Date(start.getTime() + minutosFinal * 60000);
+
+        eventos.push({
+          title:
+            turno.pacienteNombre +
+            (turno.tipoConsulta ? " - " + turno.tipoConsulta : ""),
+          start,
+          end,
+          extendedProps: {
+            pacienteId: turno.pacienteId,
+            asistio: turno.asistio,
+            tipoConsulta: turno.tipoConsulta,
+          },
+        });
       }
     });
-  });
+  } catch (error) {
+    console.error("Error al obtener eventos:", error);
+  }
+  return eventos;
 }
 
 function mostrarAgendaTurnos() {
   mainContent.innerHTML = `
-    <h2>Agenda de Turnos</h2>
+    <h1 class="mb-4">Gestión de Turnos</h1>
     <form id="formTurno" class="row g-3 mb-4">
-      <div class="col-md-6">
-        <label for="pacienteSelect" class="form-label">Paciente *</label>
-        <select id="pacienteSelect" class="form-select" required>
-          <option value="" disabled selected>Seleccionar paciente</option>
-        </select>
-      </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label for="fechaTurno" class="form-label">Fecha *</label>
         <input type="date" id="fechaTurno" class="form-control" required />
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label for="horaTurno" class="form-label">Hora *</label>
         <input type="time" id="horaTurno" class="form-control" required />
       </div>
-      <div class="col-md-6">
-        <label for="tipoConsulta" class="form-label">Tipo de Consulta *</label>
-        <select id="tipoConsulta" class="form-select" required>
-          <option value="" disabled selected>Seleccionar tipo</option>
-          <option value="Consulta">Consulta</option>
-          <option value="Control Ortodoncia">Control Ortodoncia</option>
-          <option value="Extracción">Extracción</option>
-          <option value="Arreglo">Arreglo</option>
-          <option value="Limpieza">Limpieza</option>
+      <div class="col-md-4">
+        <label for="pacienteSelect" class="form-label">Paciente *</label>
+        <select id="pacienteSelect" class="form-select" required>
+          <option value="" disabled selected>Cargando pacientes...</option>
         </select>
       </div>
-      <div class="col-md-6 align-self-end">
-        <button type="submit" class="btn btn-primary">Agendar Turno</button>
+      <div class="col-md-6">
+        <label for="tipoConsulta" class="form-label">Tipo de Consulta</label>
+        <input type="text" id="tipoConsulta" class="form-control" />
+      </div>
+      <div class="col-md-6">
+        <label for="duracionTurno" class="form-label">Duración (minutos)</label>
+        <select id="duracionTurno" class="form-select">
+          <option value="15" selected>15</option>
+          <option value="30">30</option>
+          <option value="45">45</option>
+          <option value="60">60</option>
+        </select>
+      </div>
+      <div class="col-md-6 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Agregar Turno</button>
       </div>
     </form>
-
-    <h3>Turnos agendados</h3>
     <table class="table table-striped">
       <thead>
         <tr>
           <th>Fecha</th>
           <th>Hora</th>
           <th>Paciente</th>
-          <th>Consulta</th>
+          <th>Tipo Consulta</th>
           <th>Asistió</th>
           <th>Monto abonado</th>
           <th>Acciones</th>
@@ -278,58 +623,119 @@ function mostrarAgendaTurnos() {
   `;
 
   cargarPacientesSelect();
+  cargarTurnos();
 
-  const formTurno = document.getElementById("formTurno");
-  formTurno.addEventListener("submit", async (e) => {
+  document.getElementById("formTurno").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    const pacienteNombre =
-      document.getElementById("pacienteSelect").selectedOptions[0].textContent;
+
     const fecha = document.getElementById("fechaTurno").value;
     const hora = document.getElementById("horaTurno").value;
-    const tipoConsulta = document.getElementById("tipoConsulta").value;
+    const pacienteId = document.getElementById("pacienteSelect").value;
+    const tipoConsulta = document.getElementById("tipoConsulta").value.trim();
+    const duracion = parseInt(
+      document.getElementById("duracionTurno").value,
+      10
+    );
 
-    if (!pacienteId || !fecha || !hora || !tipoConsulta) {
-      alert("Complete todos los campos");
+    if (!fecha || !hora || !pacienteId || isNaN(duracion) || duracion <= 0) {
+      alert(
+        "Complete todos los campos obligatorios y ponga una duración válida."
+      );
       return;
     }
 
     try {
+      // 🔒 Verificar si ya hay un turno en ese horario
+      const turnosSnapshot = await getDocs(collection(db, "turnos"));
+      let yaExiste = false;
+      turnosSnapshot.forEach((doc) => {
+        const t = doc.data();
+        if (t.fecha === fecha && t.hora === hora) {
+          yaExiste = true;
+        }
+      });
+      if (yaExiste) {
+        alert("Ya hay un turno registrado en ese horario. Elegí otro.");
+        return;
+      }
+
+      const pacienteDoc = await getDoc(doc(db, "pacientes", pacienteId));
+      if (!pacienteDoc.exists()) {
+        alert("Paciente no encontrado.");
+        return;
+      }
+      const pacienteData = pacienteDoc.data();
+
       await addDoc(collection(db, "turnos"), {
-        pacienteId,
-        pacienteNombre,
         fecha,
         hora,
+        pacienteId,
+        pacienteNombre: pacienteData.apellido + " " + pacienteData.nombre,
         tipoConsulta,
         asistio: false,
         montoAbonado: 0,
+        duracionMinutos: duracion,
       });
-      alert("Turno agendado correctamente");
-      formTurno.reset();
+      alert("Turno agregado.");
       cargarTurnos();
+      e.target.reset();
     } catch (error) {
-      alert("Error al agendar turno: " + error.message);
+      alert("Error al agregar turno: " + error.message);
     }
   });
-
-  cargarTurnos();
 }
 
-// --- Caja ---
+// --- GESTIÓN CAJA ---
+
+async function cargarCaja() {
+  const tablaCaja = document.getElementById("tablaCaja");
+  if (!tablaCaja) return;
+  tablaCaja.innerHTML = "";
+  try {
+    const cajaSnap = await getDocs(collection(db, "caja"));
+    cajaSnap.forEach((doc) => {
+      const pago = doc.data();
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${pago.fecha}</td>
+        <td>$${pago.monto.toFixed(2)}</td>
+        <td>${pago.pacienteNombre || "-"}</td>
+        <td>${pago.tipoConsulta || "-"}</td>
+        <td>${pago.detalle || "-"}</td>
+      `;
+      tablaCaja.appendChild(fila);
+    });
+  } catch (error) {
+    alert("Error al cargar caja: " + error.message);
+  }
+}
+
 function mostrarCaja() {
   mainContent.innerHTML = `
-    <h2>Caja</h2>
+    <h1 class="mb-4">Caja</h1>
     <form id="formCaja" class="row g-3 mb-4">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <label for="fechaCaja" class="form-label">Fecha *</label>
-        <input type="date" id="fechaCaja" class="form-control" required />
+        <input type="date" id="fechaCaja" class="form-control" value="${hoy()}" required />
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <label for="montoCaja" class="form-label">Monto *</label>
         <input type="number" id="montoCaja" class="form-control" min="0" step="0.01" required />
       </div>
+      <div class="col-md-4">
+        <label for="detalleCaja" class="form-label">Detalle</label>
+        <input type="text" id="detalleCaja" class="form-control" placeholder="Concepto o descripción" />
+      </div>
+      <div class="col-md-6">
+        <label for="pacienteCaja" class="form-label">Paciente (opcional)</label>
+        <input type="text" id="pacienteCaja" class="form-control" placeholder="Nombre del paciente" />
+      </div>
+      <div class="col-md-6">
+        <label for="tipoConsultaCaja" class="form-label">Tipo de Consulta (opcional)</label>
+        <input type="text" id="tipoConsultaCaja" class="form-control" placeholder="Ej: Consulta, Pago turno, Otro" />
+      </div>
       <div class="col-12">
-        <button type="submit" class="btn btn-success">Agregar Ingreso</button>
+        <button type="submit" class="btn btn-primary">Agregar Movimiento</button>
       </div>
     </form>
 
@@ -340,33 +746,27 @@ function mostrarCaja() {
           <th>Monto</th>
           <th>Paciente</th>
           <th>Tipo Consulta</th>
+          <th>Detalle</th>
         </tr>
       </thead>
       <tbody id="tablaCaja"></tbody>
-      <tfoot>
-        <tr>
-          <th>Total</th>
-          <th id="totalCaja">$0.00</th>
-          <th></th>
-          <th></th>
-        </tr>
-      </tfoot>
     </table>
   `;
-
-  const inputFecha = document.getElementById("fechaCaja");
-  inputFecha.valueAsDate = new Date();
-
-  cargarCaja();
 
   const formCaja = document.getElementById("formCaja");
   formCaja.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const fecha = inputFecha.value;
-    const monto = parseFloat(document.getElementById("montoCaja").value);
 
-    if (!fecha || isNaN(monto) || monto <= 0) {
-      alert("Por favor, completá todos los campos correctamente.");
+    const fecha = document.getElementById("fechaCaja").value;
+    const monto = parseFloat(document.getElementById("montoCaja").value);
+    const pacienteNombre = document.getElementById("pacienteCaja").value.trim();
+    const tipoConsulta = document
+      .getElementById("tipoConsultaCaja")
+      .value.trim();
+    const detalle = document.getElementById("detalleCaja").value.trim();
+
+    if (!fecha || isNaN(monto) || monto < 0) {
+      alert("Complete fecha y monto válido.");
       return;
     }
 
@@ -374,67 +774,44 @@ function mostrarCaja() {
       await addDoc(collection(db, "caja"), {
         fecha,
         monto,
-        pacienteNombre: null,
-        tipoConsulta: null,
+        pacienteNombre: pacienteNombre || "-",
+        tipoConsulta: tipoConsulta || "-",
+        detalle: detalle || "-",
       });
-      alert("Ingreso agregado correctamente.");
+      alert("Movimiento agregado a caja.");
       formCaja.reset();
-      inputFecha.valueAsDate = new Date();
+      document.getElementById("fechaCaja").value = hoy();
       cargarCaja();
     } catch (error) {
-      alert("Error al agregar ingreso: " + error.message);
+      alert("Error al agregar movimiento: " + error.message);
     }
   });
+
+  cargarCaja();
 }
 
-async function cargarCaja() {
-  const tablaCaja = document.getElementById("tablaCaja");
-  const totalCaja = document.getElementById("totalCaja");
+// --- MANEJO DEL SIDEBAR ---
 
-  tablaCaja.innerHTML = "";
-  let total = 0;
+// Iniciar mostrando Inicio
+mostrarInicio();
 
-  try {
-    const querySnapshot = await getDocs(collection(db, "caja"));
-    let ingresos = [];
-    querySnapshot.forEach((doc) => {
-      ingresos.push({ id: doc.id, ...doc.data() });
-    });
-
-    ingresos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-
-    ingresos.forEach((ingreso) => {
-      total += parseFloat(ingreso.monto);
-      const fila = document.createElement("tr");
-      fila.innerHTML = `
-        <td>${ingreso.fecha}</td>
-        <td>$${parseFloat(ingreso.monto).toFixed(2)}</td>
-        <td>${ingreso.pacienteNombre || "-"}</td>
-        <td>${ingreso.tipoConsulta || "-"}</td>
-      `;
-      tablaCaja.appendChild(fila);
-    });
-
-    totalCaja.textContent = `$${total.toFixed(2)}`;
-  } catch (error) {
-    alert("Error al cargar caja: " + error.message);
-  }
-}
-
-// --- Navegación ---
 document.querySelectorAll("#sidebar a.nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
+    // 🔴 Limpiar búsqueda si estás viniendo de la sección Inicio
+    const inputBusqueda = document.getElementById("busquedaPaciente");
+    const resultadosBusqueda = document.getElementById("resultadosBusqueda");
+    if (inputBusqueda) inputBusqueda.value = "";
+    if (resultadosBusqueda) resultadosBusqueda.innerHTML = "";
+
     document
       .querySelectorAll("#sidebar a.nav-link")
       .forEach((l) => l.classList.remove("active"));
     e.target.classList.add("active");
-    const section = e.target.dataset.section;
-    if (section === "pacientes") mostrarGestionPacientes();
-    else if (section === "turnos") mostrarAgendaTurnos();
-    else if (section === "caja") mostrarCaja();
+    const seccion = e.target.dataset.section;
+    if (seccion === "inicio") mostrarInicio();
+    else if (seccion === "pacientes") mostrarGestionPacientes();
+    else if (seccion === "turnos") mostrarAgendaTurnos();
+    else if (seccion === "caja") mostrarCaja();
   });
 });
-
-// Inicializo en Pacientes
-mostrarGestionPacientes();
