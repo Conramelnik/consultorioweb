@@ -39,15 +39,9 @@ const turnosPorPagina = 20;
 let turnosFiltrados = [];
 
 let calendar;
-
 async function mostrarInicio() {
   mainContent.innerHTML = `
     <h1 class="mb-4">Inicio - Agenda</h1>
-    <div class="d-flex align-items-center mb-3 gap-2">
-      <button id="btnVerSemana" class="btn btn-outline-primary btn-sm">Ver Semana</button>
-      <button id="btnVerDia" class="btn btn-outline-primary btn-sm">Ver Día</button>
-      <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
-    </div>
 
     <div id="estadisticas" class="mb-4 d-flex gap-3 flex-wrap">
       <div class="card flex-fill border-primary text-center p-3">
@@ -67,20 +61,23 @@ async function mostrarInicio() {
         <p id="ingresosDia" class="fs-4 mb-0">$ -</p>
       </div>
     </div>
-<div class="mb-3">
-  <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." />
+
+  <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+  <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
+  <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." style="flex: 1; max-width: 800px;" />
 </div>
 <div id="resultadosBusqueda" class="mt-2"></div>
 
+
     <div id="calendar" style="height: 600px; overflow-y: auto; border: 1px solid #ddd;"></div>
   `;
+
   await cargarTodosPacientes();
   await cargarTodosTurnos();
 
   const selectorFecha = document.getElementById("selectorFecha");
   selectorFecha.value = new Date().toISOString().slice(0, 10);
 
-  // Inicializar calendario
   const calendarEl = document.getElementById("calendar");
   calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: "timeGridWeek",
@@ -89,14 +86,16 @@ async function mostrarInicio() {
     allDaySlot: false,
     height: "600",
     expandRows: true,
-    headerToolbar: false,
+    headerToolbar: {
+      left: "prev,next today",
+      center: "title",
+      right: "timeGridDay,timeGridWeek",
+    },
     slotLabelInterval: "01:00",
     nowIndicator: true,
     slotMinTime: "07:00:00",
     slotMaxTime: "22:00:00",
-    eventOverlap: false, // 👈 ESTA ES LA LÍNEA CLAVE
-
-    // 👇 Esta parte carga eventos dinámicamente desde Firestore
+    eventOverlap: false,
     events: async function (info, successCallback, failureCallback) {
       const fecha = selectorFecha.value;
       const eventos = await obtenerEventosDelDia(fecha);
@@ -105,75 +104,98 @@ async function mostrarInicio() {
   });
 
   calendar.render();
+
   const inputBusqueda = document.getElementById("busquedaPaciente");
   const resultadosBusqueda = document.getElementById("resultadosBusqueda");
 
+  let busquedaId = 0; // id para controlar búsquedas asincrónicas
+
   inputBusqueda.addEventListener("input", async (e) => {
     const texto = e.target.value.trim().toLowerCase();
+
+    // Incrementamos el id para la búsqueda actual
+    const currentId = ++busquedaId;
+
+    // Limpiamos resultados inmediatamente
     resultadosBusqueda.innerHTML = "";
 
-    if (texto.length < 3) {
-      resultadosBusqueda.innerHTML = "";
-      return;
-    }
-    const pacientesEncontrados = [];
-    const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
-    pacientesSnapshot.forEach((doc) => {
-      const p = doc.data();
-      const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
-      const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
-      const dni = p.dni?.toString().toLowerCase() || "";
-      if (
-        nombreCompleto.includes(texto) ||
-        nombreInvertido.includes(texto) ||
-        dni.includes(texto)
-      ) {
-        pacientesEncontrados.push({ id: doc.id, ...p });
-      }
-    });
-
-    if (pacientesEncontrados.length === 0) {
-      resultadosBusqueda.innerHTML = "<p>No se encontraron pacientes.</p>";
+    if (texto === "") {
       return;
     }
 
-    let html = "<ul class='list-group'>";
-    for (const paciente of pacientesEncontrados) {
-      const turnosSnap = await getDocs(collection(db, "turnos"));
-      const turnos = [];
-      turnosSnap.forEach((docu) => {
-        const t = docu.data();
-        if (t.pacienteId === paciente.id) {
-          turnos.push(t);
+    try {
+      const pacientesEncontrados = [];
+      const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
+
+      // Si ya hay una búsqueda más nueva, cancelamos esta
+      if (currentId !== busquedaId) return;
+
+      pacientesSnapshot.forEach((doc) => {
+        const p = doc.data();
+        const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
+        const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
+        const dni = p.dni?.toString().toLowerCase() || "";
+
+        if (
+          nombreCompleto.includes(texto) ||
+          nombreInvertido.includes(texto) ||
+          dni.includes(texto)
+        ) {
+          pacientesEncontrados.push({ id: doc.id, ...p });
         }
       });
 
-      html += `<li class="list-group-item">
-        <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
-        <em>Turnos:</em>
-        <ul>`;
-      if (turnos.length === 0) {
-        html += "<li>No tiene turnos.</li>";
-      } else {
-        turnos.forEach((t) => {
-          html += `<li>${t.fecha} ${t.hora} - ${
-            t.tipoConsulta || "Consulta"
-          }</li>`;
-        });
+      if (currentId !== busquedaId) return;
+
+      if (pacientesEncontrados.length === 0) {
+        resultadosBusqueda.innerHTML = "<p>No se encontraron pacientes.</p>";
+        return;
       }
-      html += "</ul></li>";
+
+      let html = "<ul class='list-group'>";
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+
+      for (const paciente of pacientesEncontrados) {
+        const turnosSnap = await getDocs(collection(db, "turnos"));
+        if (currentId !== busquedaId) return;
+
+        const turnos = [];
+        turnosSnap.forEach((docu) => {
+          const t = docu.data();
+          if (t.pacienteId === paciente.id && t.fecha >= fechaHoy) {
+            turnos.push(t);
+          }
+        });
+
+        html += `<li class="list-group-item">
+        <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
+        <em>Próximos turnos:</em>
+        <ul>`;
+
+        if (turnos.length === 0) {
+          html += "<li>No tiene próximos turnos.</li>";
+        } else {
+          turnos.forEach((t) => {
+            html += `<li>${t.fecha} ${t.hora} - ${
+              t.tipoConsulta || "Consulta"
+            }</li>`;
+          });
+        }
+
+        html += "</ul></li>";
+      }
+      html += "</ul>";
+
+      if (currentId === busquedaId) {
+        resultadosBusqueda.innerHTML = html;
+      }
+    } catch (error) {
+      console.error("Error en búsqueda:", error);
+      if (currentId === busquedaId) {
+        resultadosBusqueda.innerHTML =
+          "<p class='text-danger'>Error al buscar pacientes.</p>";
+      }
     }
-    html += "</ul>";
-    resultadosBusqueda.innerHTML = html;
-  });
-
-  // Eventos botones y selector
-  document.getElementById("btnVerSemana").addEventListener("click", () => {
-    calendar.changeView("timeGridWeek");
-  });
-
-  document.getElementById("btnVerDia").addEventListener("click", () => {
-    calendar.changeView("timeGridDay");
   });
 
   selectorFecha.addEventListener("change", (e) => {
@@ -181,10 +203,8 @@ async function mostrarInicio() {
     calcularEstadisticas(e.target.value);
   });
 
-  // Mostrar estadísticas para la fecha inicial
   calcularEstadisticas(selectorFecha.value);
 }
-
 async function calcularEstadisticas(fechaSeleccionada) {
   const hoy = fechaSeleccionada;
 
@@ -505,27 +525,42 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
     for (const t of turnosPagina) {
       const fila = document.createElement("tr");
       fila.innerHTML = `
-        <td>${t.fecha}</td>
-        <td>${t.hora}</td>
-        <td>${t.pacienteNombre}</td>
-        <td>${t.tipoConsulta || "-"}</td>
-        <td>${t.asistio ? "Sí" : t.cancelado ? "Cancelado" : "No"}</td>
-        <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
-       <td>
-  ${
-    t.asistio
-      ? '<span class="text-success fw-bold">Asistió</span>'
-      : t.cancelado
-      ? '<span class="text-warning fw-bold">Cancelado</span>'
-      : `
-        <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}">Asistió</button>
-        <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}">Cancelado</button>
-        <button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}">Eliminar</button>
+    <td>${t.fecha}</td>
+    <td>${t.hora}</td>
+    <td>${t.pacienteNombre}</td>
+    <td>${t.tipoConsulta || "-"}</td>
+    <td>
+      ${
+        t.asistio
+          ? '<span class="text-success fw-bold">Asistió</span>'
+          : t.cancelado
+          ? '<span class="text-warning fw-bold">Cancelado</span>'
+          : t.ausente
+          ? '<span class="text-secondary fw-bold">Ausente</span>'
+          : "-"
+      }
+ <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
+<td>
+  <div class="d-flex justify-content-end gap-1 flex-wrap">
+    ${
+      !t.asistio && !t.cancelado && !t.ausente
+        ? `
+      <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">✔️</button>
+      <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">⚠️</button>
+      <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">❌</button>
       `
-  }
+        : ""
+    }
+    <button class="btn btn-sm btn-info btn-editar" data-id="${
+      t.id
+    }" title="Editar turno">✏️</button>
+    <button class="btn btn-sm btn-danger btn-eliminar" data-id="${
+      t.id
+    }" title="Eliminar turno">🗑️</button>
+  </div>
 </td>
 
-      `;
+  `;
       tablaTurnos.appendChild(fila);
     }
 
@@ -574,7 +609,15 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
         cargarTurnosPaginados(pagina);
       });
     });
-
+    document.querySelectorAll(".btn-ausente").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const turnoId = e.target.dataset.id;
+        if (!confirm("¿Marcar este turno como ausente?")) return;
+        await updateDoc(doc(db, "turnos", turnoId), { ausente: true });
+        alert("Turno marcado como ausente.");
+        cargarTurnosPaginados(pagina);
+      });
+    });
     document.querySelectorAll(".btn-eliminar").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const turnoId = e.target.dataset.id;
@@ -700,6 +743,104 @@ function mostrarAgendaTurnos() {
 
   cargarPacientesSelect();
   cargarTurnosPaginados();
+  document.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("btn-editar")) {
+      const turnoId = e.target.dataset.id;
+
+      try {
+        const docSnap = await getDoc(doc(db, "turnos", turnoId));
+        if (!docSnap.exists()) return alert("Turno no encontrado");
+
+        const t = docSnap.data();
+
+        document.getElementById("editarTurnoId").value = turnoId;
+        document.getElementById("editarFecha").value = t.fecha;
+        document.getElementById("editarHora").value = t.hora;
+        document.getElementById("editarMonto").value = t.montoAbonado || 0;
+
+        const modal = new bootstrap.Modal(
+          document.getElementById("modalEditarTurno")
+        );
+        modal.show();
+      } catch (err) {
+        alert("Error al cargar turno para editar");
+      }
+    }
+  });
+
+  document
+    .getElementById("formEditarTurno")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("editarTurnoId").value;
+      const fecha = document.getElementById("editarFecha").value;
+      const hora = document.getElementById("editarHora").value;
+      const monto =
+        parseFloat(document.getElementById("editarMonto").value) || 0;
+
+      try {
+        await updateDoc(doc(db, "turnos", id), {
+          fecha,
+          hora,
+          montoAbonado: monto,
+        });
+
+        alert("Turno actualizado.");
+        bootstrap.Modal.getInstance(
+          document.getElementById("modalEditarTurno")
+        ).hide();
+        cargarTurnosPaginados(1);
+      } catch (err) {
+        alert("Error al actualizar turno.");
+      }
+    });
+
+  document
+    .getElementById("formEditarTurno")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("turnoIdEditar").value;
+      const fecha = document.getElementById("fechaEditar").value;
+      const hora = document.getElementById("horaEditar").value;
+      const tipo = document.getElementById("tipoConsultaEditar").value.trim();
+      const duracion = parseInt(
+        document.getElementById("duracionEditar").value,
+        10
+      );
+
+      const contenedorMonto = document.getElementById("contenedorMontoEditar");
+      const inputMonto = document.getElementById("montoEditar");
+
+      try {
+        const updateData = {
+          fecha,
+          hora,
+          tipoConsulta: tipo,
+          duracionMinutos: duracion,
+        };
+
+        if (contenedorMonto.style.display === "block") {
+          const montoVal = parseFloat(inputMonto.value);
+          if (isNaN(montoVal) || montoVal < 0) {
+            alert("Monto inválido");
+            return;
+          }
+          updateData.montoAbonado = montoVal;
+        }
+
+        await updateDoc(doc(db, "turnos", id), updateData);
+
+        alert("Turno actualizado.");
+        bootstrap.Modal.getInstance(
+          document.getElementById("modalEditarTurno")
+        ).hide();
+        cargarTurnosPaginados(1);
+      } catch (err) {
+        alert("Error al actualizar turno.");
+      }
+    });
 
   document.getElementById("formTurno").addEventListener("submit", async (e) => {
     e.preventDefault();
