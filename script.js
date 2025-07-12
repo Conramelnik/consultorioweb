@@ -38,9 +38,7 @@ let paginaActualTurnos = 1;
 const turnosPorPagina = 20;
 let turnosFiltrados = [];
 
-
 let pacientesGlobalFiltrados = []; // pacientes filtrados
-
 
 let calendar;
 async function mostrarInicio() {
@@ -283,7 +281,7 @@ async function cargarPacientes() {
       pacientes.push({ id: doc.id, ...doc.data() });
     });
     pacientes.sort((a, b) => a.apellido.localeCompare(b.apellido));
-    
+
     pacientesGlobal = pacientes;
     pacientesGlobalFiltrados = pacientes; // lista usada para mostrar/paginar
     mostrarPagina(paginaActual);
@@ -295,12 +293,13 @@ async function cargarPacientes() {
   }
 }
 
-
 function mostrarPagina(pagina) {
   const tablaPacientes = document.getElementById("tablaPacientes");
   tablaPacientes.innerHTML = "";
 
-  const totalPaginas = Math.ceil(pacientesGlobalFiltrados.length / PACIENTES_POR_PAGINA);
+  const totalPaginas = Math.ceil(
+    pacientesGlobalFiltrados.length / PACIENTES_POR_PAGINA
+  );
 
   if (pagina < 1) pagina = 1;
   if (pagina > totalPaginas) pagina = totalPaginas;
@@ -310,23 +309,23 @@ function mostrarPagina(pagina) {
   // índice inicial y final para el slice
   const inicio = (pagina - 1) * PACIENTES_POR_PAGINA;
   const fin = inicio + PACIENTES_POR_PAGINA;
- const pacientesPagina = pacientesGlobalFiltrados.slice(inicio, fin);
-
+  const pacientesPagina = pacientesGlobalFiltrados.slice(inicio, fin);
 
   pacientesPagina.forEach((p) => {
-  const fila = document.createElement("tr");
-  fila.innerHTML = `
+    const fila = document.createElement("tr");
+    fila.innerHTML = `
     <td>${p.apellido}</td>
     <td>${p.nombre}</td>
     <td>${p.dni}</td>
     <td>${p.telefono || "-"}</td>
     <td class="text-end">
-      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${p.id}">Ver ficha</button>
+      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
+        p.id
+      }">Ver ficha</button>
     </td>
   `;
-  tablaPacientes.appendChild(fila);
-});
-
+    tablaPacientes.appendChild(fila);
+  });
 
   // Botones "Ver ficha"
   agregarEventosVerFicha();
@@ -336,9 +335,9 @@ function mostrarPagina(pagina) {
 }
 function actualizarEstadisticasPacientes(pacientes) {
   document.getElementById("estadisticaTotal").textContent = pacientes.length;
-  const masculino = pacientes.filter(p => p.genero === "Masculino").length;
-  const femenino = pacientes.filter(p => p.genero === "Femenino").length;
-  const otro = pacientes.filter(p => p.genero === "Otro").length;
+  const masculino = pacientes.filter((p) => p.genero === "Masculino").length;
+  const femenino = pacientes.filter((p) => p.genero === "Femenino").length;
+  const otro = pacientes.filter((p) => p.genero === "Otro").length;
 
   document.getElementById("estadisticaMasculino").textContent = masculino;
   document.getElementById("estadisticaFemenino").textContent = femenino;
@@ -596,7 +595,7 @@ function mostrarGestionPacientes() {
         </div>
         <div class="card mb-3">
           <div class="card-body">
-            <h5 class="card-title">Distribución por género</h5>
+            <h5 class="card-title">Balance de género</h5>
             <ul class="list-group list-group-flush">
               <li class="list-group-item">Masculino: <span id="estadisticaMasculino">0</span></li>
               <li class="list-group-item">Femenino: <span id="estadisticaFemenino">0</span></li>
@@ -640,30 +639,29 @@ function mostrarGestionPacientes() {
     }
   });
   // Funcionalidad del buscador
-const inputBuscador = document.getElementById("buscadorPacientes");
-inputBuscador.addEventListener("input", () => {
-  const texto = inputBuscador.value.trim().toLowerCase();
+  const inputBuscador = document.getElementById("buscadorPacientes");
+  inputBuscador.addEventListener("input", () => {
+    const texto = inputBuscador.value.trim().toLowerCase();
 
-  if (texto === "") {
-    pacientesGlobalFiltrados = pacientesGlobal;
-  } else {
-    pacientesGlobalFiltrados = pacientesGlobal.filter((p) => {
-      const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
-      const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
-      const dni = p.dni?.toString().toLowerCase() || "";
+    if (texto === "") {
+      pacientesGlobalFiltrados = pacientesGlobal;
+    } else {
+      pacientesGlobalFiltrados = pacientesGlobal.filter((p) => {
+        const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
+        const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
+        const dni = p.dni?.toString().toLowerCase() || "";
 
-      return (
-        nombreCompleto.includes(texto) ||
-        nombreInvertido.includes(texto) ||
-        dni.includes(texto)
-      );
-    });
-  }
+        return (
+          nombreCompleto.includes(texto) ||
+          nombreInvertido.includes(texto) ||
+          dni.includes(texto)
+        );
+      });
+    }
 
-  paginaActual = 1;
-  mostrarPagina(paginaActual);
-});
-
+    paginaActual = 1;
+    mostrarPagina(paginaActual);
+  });
 
   cargarPacientes();
 }
@@ -1095,74 +1093,244 @@ function mostrarAgendaTurnos() {
     }
   });
 }
+let cajaMovimientosFiltrados = [];
+let cajaPaginaActual = 1;
+const cajaPorPagina = 10;
 
 // --- GESTIÓN CAJA ---
 
-async function cargarCaja() {
-  const tablaCaja = document.getElementById("tablaCaja");
-  if (!tablaCaja) return;
-  tablaCaja.innerHTML = "";
+async function cargarCaja(filtroDesde = "", filtroHasta = "") {
   try {
     const cajaSnap = await getDocs(collection(db, "caja"));
+    let ingresos = 0;
+    let egresos = 0;
+
+    cajaMovimientosFiltrados = [];
+
     cajaSnap.forEach((doc) => {
       const pago = doc.data();
-      const fila = document.createElement("tr");
-      fila.innerHTML = `
-        <td>${pago.fecha}</td>
-        <td>$${pago.monto.toFixed(2)}</td>
-        <td>${pago.pacienteNombre || "-"}</td>
-        <td>${pago.tipoConsulta || "-"}</td>
-        <td>${pago.detalle || "-"}</td>
-      `;
-      tablaCaja.appendChild(fila);
+      if (
+        (!filtroDesde || pago.fecha >= filtroDesde) &&
+        (!filtroHasta || pago.fecha <= filtroHasta)
+      ) {
+        cajaMovimientosFiltrados.push(pago);
+
+        if (pago.monto >= 0) ingresos += pago.monto;
+        else egresos += Math.abs(pago.monto);
+      }
     });
+
+    const resumenIngresos = document.getElementById("resumenIngresos");
+    const resumenEgresos = document.getElementById("resumenEgresos");
+    const resumenSaldo = document.getElementById("resumenSaldo");
+    const resumenCantidad = document.getElementById("resumenCantidad"); // NUEVO
+
+    if (resumenIngresos)
+      resumenIngresos.textContent = "$" + ingresos.toFixed(2);
+    if (resumenEgresos) resumenEgresos.textContent = "$" + egresos.toFixed(2);
+    if (resumenSaldo)
+      resumenSaldo.textContent = "$" + (ingresos - egresos).toFixed(2);
+
+    if (resumenCantidad)
+      resumenCantidad.textContent = cajaMovimientosFiltrados.length; // NUEVO
+
+    cajaPaginaActual = 1;
+    mostrarPaginaCaja();
   } catch (error) {
     alert("Error al cargar caja: " + error.message);
   }
 }
 
+function mostrarPaginaCaja() {
+  const tablaCaja = document.getElementById("tablaCaja");
+  if (!tablaCaja) return;
+
+  tablaCaja.innerHTML = "";
+
+  const inicio = (cajaPaginaActual - 1) * cajaPorPagina;
+  const fin = inicio + cajaPorPagina;
+  const paginaItems = cajaMovimientosFiltrados.slice(inicio, fin);
+
+  paginaItems.forEach((pago) => {
+    const fila = document.createElement("tr");
+    fila.innerHTML = `
+      <td>${pago.fecha}</td>
+      <td class="fw-bold ${pago.monto >= 0 ? "text-success" : "text-danger"}">
+        $${pago.monto.toFixed(2)}
+      </td>
+      <td>${pago.pacienteNombre || "-"}</td>
+      <td>${pago.tipoConsulta || "-"}</td>
+      <td>${pago.detalle || "-"}</td>
+    `;
+    tablaCaja.appendChild(fila);
+  });
+
+  mostrarControlesPaginacionCaja();
+}
+
+function mostrarControlesPaginacionCaja() {
+  let paginacionDiv = document.getElementById("paginacionCaja");
+  if (paginacionDiv) paginacionDiv.remove();
+
+  paginacionDiv = document.createElement("div");
+  paginacionDiv.id = "paginacionCaja";
+  paginacionDiv.className =
+    "d-flex justify-content-between align-items-center mt-2";
+
+  const totalPaginas = Math.ceil(
+    cajaMovimientosFiltrados.length / cajaPorPagina
+  );
+
+  const btnAnterior = document.createElement("button");
+  btnAnterior.textContent = "Anterior";
+  btnAnterior.className = "btn btn-secondary";
+  btnAnterior.disabled = cajaPaginaActual === 1;
+  btnAnterior.onclick = () => {
+    if (cajaPaginaActual > 1) {
+      cajaPaginaActual--;
+      mostrarPaginaCaja();
+    }
+  };
+
+  const spanPagina = document.createElement("span");
+  spanPagina.textContent = `Página ${cajaPaginaActual} de ${totalPaginas}`;
+
+  const btnSiguiente = document.createElement("button");
+  btnSiguiente.textContent = "Siguiente";
+  btnSiguiente.className = "btn btn-secondary";
+  btnSiguiente.disabled = cajaPaginaActual >= totalPaginas;
+  btnSiguiente.onclick = () => {
+    if (cajaPaginaActual < totalPaginas) {
+      cajaPaginaActual++;
+      mostrarPaginaCaja();
+    }
+  };
+
+  paginacionDiv.appendChild(btnAnterior);
+  paginacionDiv.appendChild(spanPagina);
+  paginacionDiv.appendChild(btnSiguiente);
+
+  const tablaResponsive = document.querySelector(".table-responsive");
+  if (tablaResponsive) tablaResponsive.appendChild(paginacionDiv);
+}
+
 function mostrarCaja() {
   mainContent.innerHTML = `
-    <h1 class="mb-4">Caja</h1>
-    <form id="formCaja" class="row g-3 mb-4">
-      <div class="col-md-4">
-        <label for="fechaCaja" class="form-label">Fecha *</label>
-        <input type="date" id="fechaCaja" class="form-control" value="${hoy()}" required />
-      </div>
-      <div class="col-md-4">
-        <label for="montoCaja" class="form-label">Monto *</label>
-        <input type="number" id="montoCaja" class="form-control" min="0" step="0.01" required />
-      </div>
-      <div class="col-md-4">
-        <label for="detalleCaja" class="form-label">Detalle</label>
-        <input type="text" id="detalleCaja" class="form-control" placeholder="Concepto o descripción" />
-      </div>
-      <div class="col-md-6">
-        <label for="pacienteCaja" class="form-label">Paciente (opcional)</label>
-        <input type="text" id="pacienteCaja" class="form-control" placeholder="Nombre del paciente" />
-      </div>
-      <div class="col-md-6">
-        <label for="tipoConsultaCaja" class="form-label">Tipo de Consulta (opcional)</label>
-        <input type="text" id="tipoConsultaCaja" class="form-control" placeholder="Ej: Consulta, Pago turno, Otro" />
-      </div>
-      <div class="col-12">
-        <button type="submit" class="btn btn-primary">Agregar Movimiento</button>
-      </div>
-    </form>
+    <div class="row">
+      <!-- Columna principal -->
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="mb-0">Caja diaria</h1>
+          <button class="btn btn-primary" id="btnNuevoMovimiento">Nuevo Movimiento</button>
+        </div>
 
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Monto</th>
-          <th>Paciente</th>
-          <th>Tipo Consulta</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody id="tablaCaja"></tbody>
-    </table>
+        <!-- Caja: filtros + movimientos -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <!-- Filtros por fecha -->
+            <div class="row g-2 mb-3">
+              <div class="col-md-5">
+                <label for="filtroDesde" class="form-label">Desde</label>
+                <input type="date" id="filtroDesde" class="form-control" />
+              </div>
+              <div class="col-md-5">
+                <label for="filtroHasta" class="form-label">Hasta</label>
+                <input type="date" id="filtroHasta" class="form-control" />
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100" id="btnAplicarFiltros">Filtrar</button>
+              </div>
+            </div>
+
+            <!-- Formulario oculto -->
+            <div class="collapse mb-3" id="formularioCaja">
+              <form id="formCaja" class="row g-3">
+                <div class="col-md-4">
+                  <label for="fechaCaja" class="form-label">Fecha *</label>
+                  <input type="date" id="fechaCaja" class="form-control" value="${hoy()}" required />
+                </div>
+                <div class="col-md-4">
+                  <label for="montoCaja" class="form-label">Monto *</label>
+                  <input type="number" id="montoCaja" class="form-control" required />
+                </div>
+                <div class="col-md-4">
+                  <label for="detalleCaja" class="form-label">Detalle</label>
+                  <input type="text" id="detalleCaja" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                  <label for="pacienteCaja" class="form-label">Paciente</label>
+                  <input type="text" id="pacienteCaja" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                  <label for="tipoConsultaCaja" class="form-label">Tipo de Consulta</label>
+                  <input type="text" id="tipoConsultaCaja" class="form-control" />
+                </div>
+                <div class="col-12">
+                  <button type="submit" class="btn btn-success">Agregar Movimiento</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Tabla de movimientos -->
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Paciente</th>
+                    <th>Tipo Consulta</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaCaja"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna lateral con estadísticas centrada y con menos margen -->
+      <div class="col-lg-3 mx-auto" style="max-width: 300px; padding-left: 10px; padding-right: 10px;">
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Movimientos</h5>
+            <p id="resumenCantidad" class="fw-bold">0</p>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Ingresos</h5>
+            <p id="resumenIngresos" class="fw-bold text-success">$0.00</p>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Egresos</h5>
+            <p id="resumenEgresos" class="fw-bold text-danger">$0.00</p>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Saldo Neto</h5>
+            <p id="resumenSaldo" class="fw-bold">$0.00</p>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+
+  document
+    .getElementById("btnNuevoMovimiento")
+    .addEventListener("click", () => {
+      document.getElementById("formularioCaja").classList.toggle("show");
+    });
+
+  document.getElementById("btnAplicarFiltros").addEventListener("click", () => {
+    const desde = document.getElementById("filtroDesde").value;
+    const hasta = document.getElementById("filtroHasta").value;
+    cargarCaja(desde, hasta);
+  });
 
   const formCaja = document.getElementById("formCaja");
   formCaja.addEventListener("submit", async (e) => {
@@ -1176,8 +1344,8 @@ function mostrarCaja() {
       .value.trim();
     const detalle = document.getElementById("detalleCaja").value.trim();
 
-    if (!fecha || isNaN(monto) || monto < 0) {
-      alert("Complete fecha y monto válido.");
+    if (!fecha || isNaN(monto)) {
+      alert("Ingrese fecha y monto válido.");
       return;
     }
 
@@ -1189,7 +1357,7 @@ function mostrarCaja() {
         tipoConsulta: tipoConsulta || "-",
         detalle: detalle || "-",
       });
-      alert("Movimiento agregado a caja.");
+      alert("Movimiento agregado.");
       formCaja.reset();
       document.getElementById("fechaCaja").value = hoy();
       cargarCaja();
