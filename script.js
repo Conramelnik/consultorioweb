@@ -38,6 +38,10 @@ let paginaActualTurnos = 1;
 const turnosPorPagina = 20;
 let turnosFiltrados = [];
 
+
+let pacientesGlobalFiltrados = []; // pacientes filtrados
+
+
 let calendar;
 async function mostrarInicio() {
   mainContent.innerHTML = `
@@ -279,18 +283,25 @@ async function cargarPacientes() {
       pacientes.push({ id: doc.id, ...doc.data() });
     });
     pacientes.sort((a, b) => a.apellido.localeCompare(b.apellido));
-    pacientesGlobal = pacientes; // guardamos para paginar
+    
+    pacientesGlobal = pacientes;
+    pacientesGlobalFiltrados = pacientes; // lista usada para mostrar/paginar
     mostrarPagina(paginaActual);
+
+    // Actualizar estadísticas
+    actualizarEstadisticasPacientes(pacientes);
   } catch (error) {
     alert("Error al cargar pacientes: " + error.message);
   }
 }
 
+
 function mostrarPagina(pagina) {
   const tablaPacientes = document.getElementById("tablaPacientes");
   tablaPacientes.innerHTML = "";
 
-  const totalPaginas = Math.ceil(pacientesGlobal.length / PACIENTES_POR_PAGINA);
+  const totalPaginas = Math.ceil(pacientesGlobalFiltrados.length / PACIENTES_POR_PAGINA);
+
   if (pagina < 1) pagina = 1;
   if (pagina > totalPaginas) pagina = totalPaginas;
 
@@ -299,34 +310,39 @@ function mostrarPagina(pagina) {
   // índice inicial y final para el slice
   const inicio = (pagina - 1) * PACIENTES_POR_PAGINA;
   const fin = inicio + PACIENTES_POR_PAGINA;
-  const pacientesPagina = pacientesGlobal.slice(inicio, fin);
+ const pacientesPagina = pacientesGlobalFiltrados.slice(inicio, fin);
+
 
   pacientesPagina.forEach((p) => {
-    const fila = document.createElement("tr");
-    fila.innerHTML = `
-      <td>${p.apellido}</td>
-      <td>${p.nombre}</td>
-      <td>${p.dni}</td>
-      <td>${p.telefono || "-"}</td>
-      <td>${p.direccion || "-"}</td>
-      <td>${p.obraSocial || "-"}</td>
-      <td>${p.genero || "-"}</td>
-      <td>${p.fechaNacimiento || "-"}</td>
-      <td>${p.fechaIngreso || "-"}</td>
-      <td>
-        <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
-          p.id
-        }">Ver ficha</button>
-      </td>
-    `;
-    tablaPacientes.appendChild(fila);
-  });
+  const fila = document.createElement("tr");
+  fila.innerHTML = `
+    <td>${p.apellido}</td>
+    <td>${p.nombre}</td>
+    <td>${p.dni}</td>
+    <td>${p.telefono || "-"}</td>
+    <td class="text-end">
+      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${p.id}">Ver ficha</button>
+    </td>
+  `;
+  tablaPacientes.appendChild(fila);
+});
+
 
   // Botones "Ver ficha"
   agregarEventosVerFicha();
 
   // Actualizar controles de paginación
   mostrarControlesPaginacion(totalPaginas);
+}
+function actualizarEstadisticasPacientes(pacientes) {
+  document.getElementById("estadisticaTotal").textContent = pacientes.length;
+  const masculino = pacientes.filter(p => p.genero === "Masculino").length;
+  const femenino = pacientes.filter(p => p.genero === "Femenino").length;
+  const otro = pacientes.filter(p => p.genero === "Otro").length;
+
+  document.getElementById("estadisticaMasculino").textContent = masculino;
+  document.getElementById("estadisticaFemenino").textContent = femenino;
+  document.getElementById("estadisticaOtro").textContent = otro;
 }
 
 function mostrarControlesPaginacion(totalPaginas) {
@@ -387,14 +403,21 @@ function agregarEventosVerFicha() {
       const paciente = pacienteSnap.data();
 
       // Mostrar datos
-      document.getElementById("fichaApellido").textContent = paciente.apellido || "-";
-      document.getElementById("fichaNombre").textContent = paciente.nombre || "-";
+      document.getElementById("fichaApellido").textContent =
+        paciente.apellido || "-";
+      document.getElementById("fichaNombre").textContent =
+        paciente.nombre || "-";
       document.getElementById("fichaDNI").textContent = paciente.dni || "-";
-      document.getElementById("fichaTelefono").textContent = paciente.telefono || "-";
-      document.getElementById("fichaDireccion").textContent = paciente.direccion || "-";
-      document.getElementById("fichaObraSocial").textContent = paciente.obraSocial || "-";
-      document.getElementById("fichaGenero").textContent = paciente.genero || "-";
-      document.getElementById("fichaFechaNacimiento").textContent = paciente.fechaNacimiento || "-";
+      document.getElementById("fichaTelefono").textContent =
+        paciente.telefono || "-";
+      document.getElementById("fichaDireccion").textContent =
+        paciente.direccion || "-";
+      document.getElementById("fichaObraSocial").textContent =
+        paciente.obraSocial || "-";
+      document.getElementById("fichaGenero").textContent =
+        paciente.genero || "-";
+      document.getElementById("fichaFechaNacimiento").textContent =
+        paciente.fechaNacimiento || "-";
 
       // Vaciar listas
       const ulTurnos = document.getElementById("fichaTurnos");
@@ -413,7 +436,11 @@ function agregarEventosVerFicha() {
         if (turno.pacienteId === pacienteId) {
           const li = document.createElement("li");
           li.classList.add("list-group-item");
-          li.textContent = `${turno.fecha} ${turno.hora} - ${turno.tipoConsulta || "-"} - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${turno.montoAbonado?.toFixed(2) || "0.00"}`;
+          li.textContent = `${turno.fecha} ${turno.hora} - ${
+            turno.tipoConsulta || "-"
+          } - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${
+            turno.montoAbonado?.toFixed(2) || "0.00"
+          }`;
           ulTurnos.appendChild(li);
         }
       });
@@ -425,91 +452,166 @@ function agregarEventosVerFicha() {
         if (pago.pacienteNombre === paciente.apellido + " " + paciente.nombre) {
           const li = document.createElement("li");
           li.classList.add("list-group-item");
-          li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${pago.tipoConsulta || "-"}`;
+          li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${
+            pago.tipoConsulta || "-"
+          }`;
           ulPagos.appendChild(li);
         }
       });
 
       // Mostrar modal
-      const modalFicha = new bootstrap.Modal(document.getElementById("modalFichaPaciente"));
+      const modalFicha = new bootstrap.Modal(
+        document.getElementById("modalFichaPaciente")
+      );
       modalFicha.show();
     });
   });
 }
 
-
 function mostrarGestionPacientes() {
   mainContent.innerHTML = `
-    <h1 class="mb-4">Gestión de Pacientes</h1>
-    <form id="formPaciente" class="row g-3 mb-4">
-  <!-- Fila 1 -->
-  <div class="col-md-4">
-    <label for="apellido" class="form-label">Apellido *</label>
-    <input type="text" class="form-control" id="apellido" required />
-  </div>
-  <div class="col-md-4">
-    <label for="nombre" class="form-label">Nombre *</label>
-    <input type="text" class="form-control" id="nombre" required />
-  </div>
-  <div class="col-md-4">
-    <label for="dni" class="form-label">DNI *</label>
-    <input type="text" class="form-control" id="dni" required />
-  </div>
+    <style>
+      /* Estilos generales */
+      table.table tbody tr {
+        height: 50px;
+      }
+      table.table th,
+      table.table td {
+        padding: 12px 15px;
+        vertical-align: middle;
+      }
+      #formPaciente .form-control {
+        padding: 8px 10px;
+      }
+      #formPaciente .col-md-4,
+      #formPaciente .col-md-6 {
+        margin-bottom: 15px;
+      }
+      #buscadorPacientes {
+        max-width: 300px;
+      }
+      #btnNuevoPaciente {
+        white-space: nowrap;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+      }
+      /* Espacio horizontal entre columnas */
+      .row {
+        column-gap: 30px;
+      }
+      /* Ajuste ancho columnas */
+      .col-lg-8 {
+        /* Mantener igual, nada que cambiar */
+      }
+      .col-lg-3 {
+        max-width: 220px; /* Más angosta que el 4 normal */
+        flex: 0 0 220px;
+      }
+      /* Alineación botón ver ficha */
+      .text-end {
+        text-align: right !important;
+      }
+    </style>
 
-  <!-- Fila 2 -->
-  <div class="col-md-4">
-    <label for="fechaNacimiento" class="form-label">Fecha de Nacimiento</label>
-    <input type="date" class="form-control" id="fechaNacimiento" />
-  </div>
-  <div class="col-md-4">
-    <label for="telefono" class="form-label">Teléfono *</label>
-    <input type="tel" class="form-control" id="telefono" required />
-  </div>
-  <div class="col-md-4">
-    <label for="direccion" class="form-label">Dirección</label>
-    <input type="text" class="form-control" id="direccion" />
-  </div>
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="mb-0">Mis Pacientes</h2>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
+            <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
+          </div>
+        </div>
 
-  <!-- Fila 3 -->
-  <div class="col-md-6">
-    <label for="genero" class="form-label">Género</label>
-    <select class="form-select" id="genero">
-      <option value="" selected>Seleccionar</option>
-      <option value="Masculino">Masculino</option>
-      <option value="Femenino">Femenino</option>
-      <option value="Otro">Otro</option>
-    </select>
-  </div>
-  <div class="col-md-6">
-    <label for="obraSocial" class="form-label">Obra Social</label>
-    <input type="text" class="form-control" id="obraSocial" />
-  </div>
+        <div class="collapse mb-4" id="formularioPaciente">
+          <form id="formPaciente" class="row g-3">
+            <div class="col-md-4">
+              <label for="apellido" class="form-label">Apellido *</label>
+              <input type="text" class="form-control" id="apellido" required />
+            </div>
+            <div class="col-md-4">
+              <label for="nombre" class="form-label">Nombre *</label>
+              <input type="text" class="form-control" id="nombre" required />
+            </div>
+            <div class="col-md-4">
+              <label for="dni" class="form-label">DNI *</label>
+              <input type="text" class="form-control" id="dni" required />
+            </div>
 
-  <!-- Fila 4 -->
-  <div class="col-12">
-    <button type="submit" class="btn btn-primary">Guardar Paciente</button>
-  </div>
-</form>
+            <div class="col-md-4">
+              <label for="fechaNacimiento" class="form-label">Fecha de Nacimiento</label>
+              <input type="date" class="form-control" id="fechaNacimiento" />
+            </div>
+            <div class="col-md-4">
+              <label for="telefono" class="form-label">Teléfono *</label>
+              <input type="tel" class="form-control" id="telefono" required />
+            </div>
+            <div class="col-md-4">
+              <label for="direccion" class="form-label">Dirección</label>
+              <input type="text" class="form-control" id="direccion" />
+            </div>
 
+            <div class="col-md-6">
+              <label for="genero" class="form-label">Género</label>
+              <select class="form-select" id="genero">
+                <option value="" selected>Seleccionar</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="obraSocial" class="form-label">Obra Social</label>
+              <input type="text" class="form-control" id="obraSocial" />
+            </div>
 
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Apellido</th>
-          <th>Nombre</th>
-          <th>DNI</th>
-          <th>Teléfono</th>
-          <th>Dirección</th>
-          <th>Obra Social</th>
-          <th>Género</th>
-          <th>Fecha Nac.</th>
-          <th>Fecha Ing.</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="tablaPacientes"></tbody>
-    </table>
+            <div class="col-12">
+              <button type="submit" class="btn btn-success">Guardar Paciente</button>
+            </div>
+          </form>
+        </div>
+
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Apellido</th>
+              <th>Nombre</th>
+              <th>DNI</th>
+              <th>Teléfono</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tablaPacientes"></tbody>
+        </table>
+      </div>
+
+      <div class="col-lg-3">
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Pacientes totales</h5>
+            <p id="estadisticaTotal" class="card-text fw-bold">0</p>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Distribución por género</h5>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">Masculino: <span id="estadisticaMasculino">0</span></li>
+              <li class="list-group-item">Femenino: <span id="estadisticaFemenino">0</span></li>
+              <li class="list-group-item">Otro: <span id="estadisticaOtro">0</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+
+  document.getElementById("btnNuevoPaciente").addEventListener("click", () => {
+    const collapse = document.getElementById("formularioPaciente");
+    collapse.classList.toggle("show");
+  });
 
   const formPaciente = document.getElementById("formPaciente");
   formPaciente.addEventListener("submit", async (e) => {
@@ -530,12 +632,38 @@ function mostrarGestionPacientes() {
       await addDoc(collection(db, "pacientes"), paciente);
       alert("Paciente guardado correctamente");
       formPaciente.reset();
-      paginaActual = 1; // reset paginación a página 1 al guardar
+      document.getElementById("formularioPaciente").classList.remove("show");
+      paginaActual = 1;
       cargarPacientes();
     } catch (error) {
       alert("Error al guardar paciente: " + error.message);
     }
   });
+  // Funcionalidad del buscador
+const inputBuscador = document.getElementById("buscadorPacientes");
+inputBuscador.addEventListener("input", () => {
+  const texto = inputBuscador.value.trim().toLowerCase();
+
+  if (texto === "") {
+    pacientesGlobalFiltrados = pacientesGlobal;
+  } else {
+    pacientesGlobalFiltrados = pacientesGlobal.filter((p) => {
+      const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
+      const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
+      const dni = p.dni?.toString().toLowerCase() || "";
+
+      return (
+        nombreCompleto.includes(texto) ||
+        nombreInvertido.includes(texto) ||
+        dni.includes(texto)
+      );
+    });
+  }
+
+  paginaActual = 1;
+  mostrarPagina(paginaActual);
+});
+
 
   cargarPacientes();
 }
