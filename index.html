@@ -57,6 +57,7 @@
     </div>
 
     <!-- Modal ficha paciente -->
+    <!-- Modal ficha paciente -->
     <div
       class="modal fade"
       id="modalFichaPaciente"
@@ -77,33 +78,156 @@
               aria-label="Cerrar"
             ></button>
           </div>
-          <div class="modal-body">
-            <h4 id="fichaNombreCompleto"></h4>
-            <p><strong>DNI:</strong> <span id="fichaDNI"></span></p>
-            <p><strong>Teléfono:</strong> <span id="fichaTelefono"></span></p>
-            <p><strong>Dirección:</strong> <span id="fichaDireccion"></span></p>
-            <p>
-              <strong>Obra Social:</strong> <span id="fichaObraSocial"></span>
-            </p>
-            <p><strong>Género:</strong> <span id="fichaGenero"></span></p>
-            <p>
-              <strong>Fecha de Nacimiento:</strong>
-              <span id="fichaFechaNacimiento"></span>
-            </p>
 
-            <hr />
-            <h5>Turnos</h5>
-            <ul id="fichaTurnos" class="list-group mb-3"></ul>
+          <div
+            class="modal-body p-3"
+            style="max-height: 70vh; overflow-y: auto"
+          >
+            <!-- Datos básicos en filas alineadas -->
+            <!-- DATOS PACIENTE MODAL VER FICHA -->
+            <div class="row mb-3 gx-3 gy-2">
+              <!-- Fila 1 -->
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Apellido</label>
+                <p id="fichaApellido" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Nombre</label>
+                <p id="fichaNombre" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">DNI</label>
+                <p id="fichaDNI" class="mb-0"></p>
+              </div>
 
-            <h5>Pagos</h5>
-            <ul id="fichaPagos" class="list-group mb-3"></ul>
+              <!-- Fila 2 -->
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Fecha Nac.</label>
+                <p id="fichaFechaNacimiento" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Teléfono</label>
+                <p id="fichaTelefono" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Género</label>
+                <p id="fichaGenero" class="mb-0"></p>
+              </div>
 
-            <h5>Notas</h5>
-            <ul id="fichaNotas" class="list-group mb-3"></ul>
+              <!-- Fila 3 -->
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Dirección</label>
+                <p id="fichaDireccion" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Obra Social</label>
+                <p id="fichaObraSocial" class="mb-0"></p>
+              </div>
+              <div class="col-md-4">
+                <!-- Espacio vacío para alinear columnas -->
+              </div>
+            </div>
 
-            <h5>Archivos</h5>
-            <ul id="fichaArchivos" class="list-group mb-3"></ul>
+            <!-- Pestañas para secciones -->
+            <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link active"
+                  id="turnos-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#turnos-tab-pane"
+                  type="button"
+                  role="tab"
+                  aria-controls="turnos-tab-pane"
+                  aria-selected="true"
+                >
+                  Turnos
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="pagos-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#pagos-tab-pane"
+                  type="button"
+                  role="tab"
+                  aria-controls="pagos-tab-pane"
+                  aria-selected="false"
+                >
+                  Pagos
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="notas-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#notas-tab-pane"
+                  type="button"
+                  role="tab"
+                  aria-controls="notas-tab-pane"
+                  aria-selected="false"
+                >
+                  Notas
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="archivos-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#archivos-tab-pane"
+                  type="button"
+                  role="tab"
+                  aria-controls="archivos-tab-pane"
+                  aria-selected="false"
+                >
+                  Archivos
+                </button>
+              </li>
+            </ul>
+
+            <div
+              class="tab-content mt-3"
+              id="fichaTabsContent"
+              style="min-height: 150px"
+            >
+              <div
+                class="tab-pane fade show active"
+                id="turnos-tab-pane"
+                role="tabpanel"
+                aria-labelledby="turnos-tab"
+              >
+                <ul id="fichaTurnos" class="list-group"></ul>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="pagos-tab-pane"
+                role="tabpanel"
+                aria-labelledby="pagos-tab"
+              >
+                <ul id="fichaPagos" class="list-group"></ul>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="notas-tab-pane"
+                role="tabpanel"
+                aria-labelledby="notas-tab"
+              >
+                <ul id="fichaNotas" class="list-group"></ul>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="archivos-tab-pane"
+                role="tabpanel"
+                aria-labelledby="archivos-tab"
+              >
+                <ul id="fichaArchivos" class="list-group"></ul>
+              </div>
+            </div>
           </div>
+
           <div class="modal-footer">
             <button
               type="button"
@@ -116,6 +240,7 @@
         </div>
       </div>
     </div>
+
     <!-- Modal editar turno -->
     <div
       class="modal fade"

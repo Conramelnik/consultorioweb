@@ -263,6 +263,9 @@ async function cargarTodosTurnos() {
     listaTurnos.push({ id: doc.id, ...doc.data() });
   });
 }
+const PACIENTES_POR_PAGINA = 20;
+let paginaActual = 1;
+let pacientesGlobal = []; // guardamos los pacientes cargados para paginar
 
 async function cargarPacientes() {
   const tablaPacientes = document.getElementById("tablaPacientes");
@@ -276,158 +279,218 @@ async function cargarPacientes() {
       pacientes.push({ id: doc.id, ...doc.data() });
     });
     pacientes.sort((a, b) => a.apellido.localeCompare(b.apellido));
-    pacientes.forEach((p) => {
-      const fila = document.createElement("tr");
-      fila.innerHTML = `
-    <td>${p.apellido}</td>
-    <td>${p.nombre}</td>
-    <td>${p.dni}</td>
-    <td>${p.telefono || "-"}</td>
-    <td>${p.direccion || "-"}</td>
-    <td>${p.obraSocial || "-"}</td>
-    <td>${p.genero || "-"}</td>
-    <td>${p.fechaNacimiento || "-"}</td>
-    <td>${p.fechaIngreso || "-"}</td>
-    <td>
-      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
-        p.id
-      }">Ver ficha</button>
-    </td>
-  `;
-      tablaPacientes.appendChild(fila);
-    });
-
-    // Botones "Ver ficha"
-    document.querySelectorAll(".ver-ficha").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const pacienteId = e.target.dataset.id;
-        if (!pacienteId) return;
-
-        const pacienteRef = doc(db, "pacientes", pacienteId);
-        const pacienteSnap = await getDoc(pacienteRef);
-        if (!pacienteSnap.exists()) {
-          alert("Paciente no encontrado");
-          return;
-        }
-        const paciente = pacienteSnap.data();
-
-        // Llenar modal
-        document.getElementById("fichaNombreCompleto").textContent =
-          paciente.apellido + ", " + paciente.nombre;
-        document.getElementById("fichaDNI").textContent = paciente.dni || "-";
-        document.getElementById("fichaTelefono").textContent =
-          paciente.telefono || "-";
-        document.getElementById("fichaDireccion").textContent =
-          paciente.direccion || "-";
-        document.getElementById("fichaObraSocial").textContent =
-          paciente.obraSocial || "-";
-        document.getElementById("fichaGenero").textContent =
-          paciente.genero || "-";
-        document.getElementById("fichaFechaNacimiento").textContent =
-          paciente.fechaNacimiento || "-";
-
-        // Vaciar listas
-        const ulTurnos = document.getElementById("fichaTurnos");
-        const ulPagos = document.getElementById("fichaPagos");
-        const ulNotas = document.getElementById("fichaNotas");
-        const ulArchivos = document.getElementById("fichaArchivos");
-        ulTurnos.innerHTML = "";
-        ulPagos.innerHTML = "";
-        ulNotas.innerHTML = "";
-        ulArchivos.innerHTML = "";
-
-        // Cargar turnos del paciente
-        const turnosSnap = await getDocs(collection(db, "turnos"));
-        turnosSnap.forEach((docu) => {
-          const turno = docu.data();
-          if (turno.pacienteId === pacienteId) {
-            const li = document.createElement("li");
-            li.classList.add("list-group-item");
-            li.textContent = `${turno.fecha} ${turno.hora} - ${
-              turno.tipoConsulta
-            } - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${
-              turno.montoAbonado?.toFixed(2) || "0.00"
-            }`;
-            ulTurnos.appendChild(li);
-          }
-        });
-
-        // Cargar pagos del paciente
-        const cajaSnap = await getDocs(collection(db, "caja"));
-        cajaSnap.forEach((docu) => {
-          const pago = docu.data();
-          if (
-            pago.pacienteNombre ===
-            paciente.apellido + " " + paciente.nombre
-          ) {
-            const li = document.createElement("li");
-            li.classList.add("list-group-item");
-            li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${
-              pago.tipoConsulta || "-"
-            }`;
-            ulPagos.appendChild(li);
-          }
-        });
-
-        // Notas y archivos: por ahora vacío
-
-        // Mostrar modal Bootstrap
-        const modalFicha = new bootstrap.Modal(
-          document.getElementById("modalFichaPaciente")
-        );
-        modalFicha.show();
-      });
-    });
+    pacientesGlobal = pacientes; // guardamos para paginar
+    mostrarPagina(paginaActual);
   } catch (error) {
     alert("Error al cargar pacientes: " + error.message);
   }
 }
 
+function mostrarPagina(pagina) {
+  const tablaPacientes = document.getElementById("tablaPacientes");
+  tablaPacientes.innerHTML = "";
+
+  const totalPaginas = Math.ceil(pacientesGlobal.length / PACIENTES_POR_PAGINA);
+  if (pagina < 1) pagina = 1;
+  if (pagina > totalPaginas) pagina = totalPaginas;
+
+  paginaActual = pagina;
+
+  // índice inicial y final para el slice
+  const inicio = (pagina - 1) * PACIENTES_POR_PAGINA;
+  const fin = inicio + PACIENTES_POR_PAGINA;
+  const pacientesPagina = pacientesGlobal.slice(inicio, fin);
+
+  pacientesPagina.forEach((p) => {
+    const fila = document.createElement("tr");
+    fila.innerHTML = `
+      <td>${p.apellido}</td>
+      <td>${p.nombre}</td>
+      <td>${p.dni}</td>
+      <td>${p.telefono || "-"}</td>
+      <td>${p.direccion || "-"}</td>
+      <td>${p.obraSocial || "-"}</td>
+      <td>${p.genero || "-"}</td>
+      <td>${p.fechaNacimiento || "-"}</td>
+      <td>${p.fechaIngreso || "-"}</td>
+      <td>
+        <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
+          p.id
+        }">Ver ficha</button>
+      </td>
+    `;
+    tablaPacientes.appendChild(fila);
+  });
+
+  // Botones "Ver ficha"
+  agregarEventosVerFicha();
+
+  // Actualizar controles de paginación
+  mostrarControlesPaginacion(totalPaginas);
+}
+
+function mostrarControlesPaginacion(totalPaginas) {
+  // Creamos o reemplazamos div con controles (lo insertamos abajo de la tabla)
+  let controles = document.getElementById("controlesPaginacion");
+  if (!controles) {
+    controles = document.createElement("div");
+    controles.id = "controlesPaginacion";
+    controles.className = "d-flex justify-content-center gap-2 my-3";
+    const tabla = document.querySelector("table");
+    tabla.parentNode.insertBefore(controles, tabla.nextSibling);
+  }
+  controles.innerHTML = "";
+
+  // Botón anterior
+  const btnPrev = document.createElement("button");
+  btnPrev.className = "btn btn-sm btn-outline-primary";
+  btnPrev.textContent = "Anterior";
+  btnPrev.disabled = paginaActual === 1;
+  btnPrev.addEventListener("click", () => {
+    if (paginaActual > 1) {
+      mostrarPagina(paginaActual - 1);
+    }
+  });
+  controles.appendChild(btnPrev);
+
+  // Texto página actual
+  const spanPagina = document.createElement("span");
+  spanPagina.className = "align-self-center";
+  spanPagina.textContent = `Página ${paginaActual} de ${totalPaginas}`;
+  controles.appendChild(spanPagina);
+
+  // Botón siguiente
+  const btnNext = document.createElement("button");
+  btnNext.className = "btn btn-sm btn-outline-primary";
+  btnNext.textContent = "Siguiente";
+  btnNext.disabled = paginaActual === totalPaginas;
+  btnNext.addEventListener("click", () => {
+    if (paginaActual < totalPaginas) {
+      mostrarPagina(paginaActual + 1);
+    }
+  });
+  controles.appendChild(btnNext);
+}
+
+function agregarEventosVerFicha() {
+  document.querySelectorAll(".ver-ficha").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const pacienteId = e.target.dataset.id;
+      if (!pacienteId) return;
+
+      const pacienteRef = doc(db, "pacientes", pacienteId);
+      const pacienteSnap = await getDoc(pacienteRef);
+      if (!pacienteSnap.exists()) {
+        alert("Paciente no encontrado");
+        return;
+      }
+      const paciente = pacienteSnap.data();
+
+      // Mostrar datos
+      document.getElementById("fichaApellido").textContent = paciente.apellido || "-";
+      document.getElementById("fichaNombre").textContent = paciente.nombre || "-";
+      document.getElementById("fichaDNI").textContent = paciente.dni || "-";
+      document.getElementById("fichaTelefono").textContent = paciente.telefono || "-";
+      document.getElementById("fichaDireccion").textContent = paciente.direccion || "-";
+      document.getElementById("fichaObraSocial").textContent = paciente.obraSocial || "-";
+      document.getElementById("fichaGenero").textContent = paciente.genero || "-";
+      document.getElementById("fichaFechaNacimiento").textContent = paciente.fechaNacimiento || "-";
+
+      // Vaciar listas
+      const ulTurnos = document.getElementById("fichaTurnos");
+      const ulPagos = document.getElementById("fichaPagos");
+      const ulNotas = document.getElementById("fichaNotas");
+      const ulArchivos = document.getElementById("fichaArchivos");
+      ulTurnos.innerHTML = "";
+      ulPagos.innerHTML = "";
+      ulNotas.innerHTML = "";
+      ulArchivos.innerHTML = "";
+
+      // Cargar turnos
+      const turnosSnap = await getDocs(collection(db, "turnos"));
+      turnosSnap.forEach((docu) => {
+        const turno = docu.data();
+        if (turno.pacienteId === pacienteId) {
+          const li = document.createElement("li");
+          li.classList.add("list-group-item");
+          li.textContent = `${turno.fecha} ${turno.hora} - ${turno.tipoConsulta || "-"} - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${turno.montoAbonado?.toFixed(2) || "0.00"}`;
+          ulTurnos.appendChild(li);
+        }
+      });
+
+      // Cargar pagos
+      const cajaSnap = await getDocs(collection(db, "caja"));
+      cajaSnap.forEach((docu) => {
+        const pago = docu.data();
+        if (pago.pacienteNombre === paciente.apellido + " " + paciente.nombre) {
+          const li = document.createElement("li");
+          li.classList.add("list-group-item");
+          li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${pago.tipoConsulta || "-"}`;
+          ulPagos.appendChild(li);
+        }
+      });
+
+      // Mostrar modal
+      const modalFicha = new bootstrap.Modal(document.getElementById("modalFichaPaciente"));
+      modalFicha.show();
+    });
+  });
+}
+
+
 function mostrarGestionPacientes() {
   mainContent.innerHTML = `
     <h1 class="mb-4">Gestión de Pacientes</h1>
     <form id="formPaciente" class="row g-3 mb-4">
-      <div class="col-md-6">
-        <label for="apellido" class="form-label">Apellido *</label>
-        <input type="text" class="form-control" id="apellido" required />
-      </div>
-      <div class="col-md-6">
-        <label for="nombre" class="form-label">Nombre *</label>
-        <input type="text" class="form-control" id="nombre" required />
-      </div>
-      <div class="col-md-4">
-        <label for="dni" class="form-label">DNI *</label>
-        <input type="text" class="form-control" id="dni" required />
-      </div>
-      <div class="col-md-4">
-        <label for="telefono" class="form-label">Número de Teléfono *</label>
-        <input type="tel" class="form-control" id="telefono" required />
-      </div>
-      <div class="col-md-4">
-        <label for="genero" class="form-label">Género</label>
-        <select class="form-select" id="genero">
-          <option value="" selected>Seleccionar</option>
-          <option value="Masculino">Masculino</option>
-          <option value="Femenino">Femenino</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label for="direccion" class="form-label">Dirección</label>
-        <input type="text" class="form-control" id="direccion" />
-      </div>
-      <div class="col-md-6">
-        <label for="obraSocial" class="form-label">Obra Social</label>
-        <input type="text" class="form-control" id="obraSocial" />
-      </div>
-      <div class="col-md-6">
-        <label for="fechaNacimiento" class="form-label">Fecha de Nacimiento</label>
-        <input type="date" class="form-control" id="fechaNacimiento" />
-      </div>
-      <div class="col-12">
-        <button type="submit" class="btn btn-primary">Guardar Paciente</button>
-      </div>
-    </form>
+  <!-- Fila 1 -->
+  <div class="col-md-4">
+    <label for="apellido" class="form-label">Apellido *</label>
+    <input type="text" class="form-control" id="apellido" required />
+  </div>
+  <div class="col-md-4">
+    <label for="nombre" class="form-label">Nombre *</label>
+    <input type="text" class="form-control" id="nombre" required />
+  </div>
+  <div class="col-md-4">
+    <label for="dni" class="form-label">DNI *</label>
+    <input type="text" class="form-control" id="dni" required />
+  </div>
+
+  <!-- Fila 2 -->
+  <div class="col-md-4">
+    <label for="fechaNacimiento" class="form-label">Fecha de Nacimiento</label>
+    <input type="date" class="form-control" id="fechaNacimiento" />
+  </div>
+  <div class="col-md-4">
+    <label for="telefono" class="form-label">Teléfono *</label>
+    <input type="tel" class="form-control" id="telefono" required />
+  </div>
+  <div class="col-md-4">
+    <label for="direccion" class="form-label">Dirección</label>
+    <input type="text" class="form-control" id="direccion" />
+  </div>
+
+  <!-- Fila 3 -->
+  <div class="col-md-6">
+    <label for="genero" class="form-label">Género</label>
+    <select class="form-select" id="genero">
+      <option value="" selected>Seleccionar</option>
+      <option value="Masculino">Masculino</option>
+      <option value="Femenino">Femenino</option>
+      <option value="Otro">Otro</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label for="obraSocial" class="form-label">Obra Social</label>
+    <input type="text" class="form-control" id="obraSocial" />
+  </div>
+
+  <!-- Fila 4 -->
+  <div class="col-12">
+    <button type="submit" class="btn btn-primary">Guardar Paciente</button>
+  </div>
+</form>
+
 
     <table class="table table-striped">
       <thead>
@@ -441,6 +504,7 @@ function mostrarGestionPacientes() {
           <th>Género</th>
           <th>Fecha Nac.</th>
           <th>Fecha Ing.</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="tablaPacientes"></tbody>
@@ -459,13 +523,14 @@ function mostrarGestionPacientes() {
       obraSocial: document.getElementById("obraSocial").value.trim(),
       genero: document.getElementById("genero").value,
       fechaNacimiento: document.getElementById("fechaNacimiento").value,
-      fechaIngreso: new Date().toISOString().slice(0, 10), // <--- esta línea es la que tenés que agregar
+      fechaIngreso: new Date().toISOString().slice(0, 10),
     };
 
     try {
       await addDoc(collection(db, "pacientes"), paciente);
       alert("Paciente guardado correctamente");
       formPaciente.reset();
+      paginaActual = 1; // reset paginación a página 1 al guardar
       cargarPacientes();
     } catch (error) {
       alert("Error al guardar paciente: " + error.message);
@@ -474,6 +539,7 @@ function mostrarGestionPacientes() {
 
   cargarPacientes();
 }
+
 // --- GESTIÓN TURNOS ---
 
 async function cargarPacientesSelect() {
