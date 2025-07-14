@@ -312,6 +312,142 @@
       </div>
     </div>
 
+    <!-- Modal turno rápido -->
+    <div
+      class="modal fade"
+      id="modalTurnoRapido"
+      tabindex="-1"
+      aria-labelledby="modalTurnoRapidoLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <form id="formTurnoRapido" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTurnoRapidoLabel">Nuevo Turno</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>
+              <strong>Fecha:</strong> <span id="turnoRapidoFechaTexto"></span>
+            </p>
+            <p>
+              <strong>Hora:</strong> <span id="turnoRapidoHoraTexto"></span>
+            </p>
+
+            <input type="hidden" id="turnoRapidoFecha" />
+            <input type="hidden" id="turnoRapidoHora" />
+
+            <div class="mb-3">
+              <label for="turnoRapidoNombre" class="form-label"
+                >Nombre del paciente</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="turnoRapidoNombre"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="turnoRapidoDuracion" class="form-label"
+                >Duración</label
+              >
+              <select class="form-select" id="turnoRapidoDuracion">
+                <option value="15">15 minutos</option>
+                <option value="30" selected>30 minutos</option>
+                <option value="45">45 minutos</option>
+                <option value="60">1 hora</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="turnoRapidoTipo" class="form-label"
+                >Tipo de consulta</label
+              >
+              <input type="text" class="form-control" id="turnoRapidoTipo" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Agendar Turno</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal turno rápido -->
+    <div
+      class="modal fade"
+      id="modalTurnoRapido"
+      tabindex="-1"
+      aria-labelledby="modalTurnoRapidoLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <form id="formTurnoRapido" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTurnoRapidoLabel">Nuevo Turno</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>
+              <strong>Fecha:</strong> <span id="turnoRapidoFechaTexto"></span>
+            </p>
+            <p>
+              <strong>Hora:</strong> <span id="turnoRapidoHoraTexto"></span>
+            </p>
+
+            <input type="hidden" id="turnoRapidoFecha" />
+            <input type="hidden" id="turnoRapidoHora" />
+
+            <div class="mb-3">
+              <label for="turnoRapidoNombre" class="form-label"
+                >Nombre del paciente</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="turnoRapidoNombre"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="turnoRapidoDuracion" class="form-label"
+                >Duración</label
+              >
+              <select class="form-select" id="turnoRapidoDuracion">
+                <option value="15">15 minutos</option>
+                <option value="30" selected>30 minutos</option>
+                <option value="45">45 minutos</option>
+                <option value="60">1 hora</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="turnoRapidoTipo" class="form-label"
+                >Tipo de consulta</label
+              >
+              <input type="text" class="form-control" id="turnoRapidoTipo" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Agendar Turno</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Tu script principal -->
     <script type="module" src="script.js"></script>
 

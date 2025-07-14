@@ -64,12 +64,11 @@ async function mostrarInicio() {
       </div>
     </div>
 
-  <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-  <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
-  <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." style="flex: 1; max-width: 800px;" />
-</div>
-<div id="resultadosBusqueda" class="mt-2"></div>
-
+    <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+      <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
+      <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." style="flex: 1; max-width: 800px;" />
+    </div>
+    <div id="resultadosBusqueda" class="mt-2"></div>
 
     <div id="calendar" style="height: 600px; overflow-y: auto; border: 1px solid #ddd;"></div>
   `;
@@ -98,11 +97,51 @@ async function mostrarInicio() {
     slotMinTime: "07:00:00",
     slotMaxTime: "22:00:00",
     eventOverlap: false,
+
     events: async function (info, successCallback, failureCallback) {
-      const fecha = selectorFecha.value;
-      const eventos = await obtenerEventosDelDia(fecha);
+      // Pido eventos para el rango visible del calendario
+      const eventos = await obtenerEventosEnRango(info.startStr, info.endStr);
       successCallback(eventos);
     },
+
+    dateClick: function (info) {
+      const fecha = info.dateStr.slice(0, 10);
+      const hora = info.date.toTimeString().slice(0, 5);
+
+      document.getElementById("turnoRapidoFecha").value = fecha;
+      document.getElementById("turnoRapidoHora").value = hora;
+      document.getElementById("turnoRapidoFechaTexto").textContent = fecha;
+      document.getElementById("turnoRapidoHoraTexto").textContent = hora;
+      document.getElementById("formTurnoRapido").reset();
+
+      const modal = new bootstrap.Modal(
+        document.getElementById("modalTurnoRapido")
+      );
+      modal.show();
+    },
+
+    eventMouseEnter: function (info) {
+      const horaInicio = info.event.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const horaFin = info.event.end?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+      const texto = `${horaInicio} - ${horaFin} | ${info.event.title}`;
+
+      info.el._tooltip = new bootstrap.Tooltip(info.el, {
+        title: texto,
+        placement: "top",
+        trigger: "manual",
+        container: "body",
+      });
+
+      info.el._tooltip.show();
+    },
+
+    eventMouseLeave: function (info) {
+      if (info.el._tooltip) {
+        info.el._tooltip.hide();
+        info.el._tooltip.dispose();
+        delete info.el._tooltip;
+      }
+    }
   });
 
   calendar.render();
@@ -110,26 +149,20 @@ async function mostrarInicio() {
   const inputBusqueda = document.getElementById("busquedaPaciente");
   const resultadosBusqueda = document.getElementById("resultadosBusqueda");
 
-  let busquedaId = 0; // id para controlar búsquedas asincrónicas
+  let busquedaId = 0;
 
   inputBusqueda.addEventListener("input", async (e) => {
     const texto = e.target.value.trim().toLowerCase();
-
-    // Incrementamos el id para la búsqueda actual
     const currentId = ++busquedaId;
 
-    // Limpiamos resultados inmediatamente
     resultadosBusqueda.innerHTML = "";
 
-    if (texto === "") {
-      return;
-    }
+    if (texto === "") return;
 
     try {
       const pacientesEncontrados = [];
       const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
 
-      // Si ya hay una búsqueda más nueva, cancelamos esta
       if (currentId !== busquedaId) return;
 
       pacientesSnapshot.forEach((doc) => {
@@ -170,24 +203,22 @@ async function mostrarInicio() {
         });
 
         html += `<li class="list-group-item">
-        <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
-        <em>Próximos turnos:</em>
-        <ul>`;
+          <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
+          <em>Próximos turnos:</em>
+          <ul>`;
 
         if (turnos.length === 0) {
           html += "<li>No tiene próximos turnos.</li>";
         } else {
           turnos.forEach((t) => {
-            html += `<li>${t.fecha} ${t.hora} - ${
-              t.tipoConsulta || "Consulta"
-            }</li>`;
+            html += `<li>${t.fecha} ${t.hora} - ${t.tipoConsulta || "Consulta"}</li>`;
           });
         }
 
         html += "</ul></li>";
       }
-      html += "</ul>";
 
+      html += "</ul>";
       if (currentId === busquedaId) {
         resultadosBusqueda.innerHTML = html;
       }
@@ -207,6 +238,54 @@ async function mostrarInicio() {
 
   calcularEstadisticas(selectorFecha.value);
 }
+
+document
+  .getElementById("formTurnoRapido")
+  .addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const nombre = document.getElementById("turnoRapidoNombre").value.trim();
+    const fecha = document.getElementById("turnoRapidoFecha").value;
+    const hora = document.getElementById("turnoRapidoHora").value;
+    const duracion = parseInt(document.getElementById("turnoRapidoDuracion").value);
+    const tipo = document.getElementById("turnoRapidoTipo").value.trim();
+
+    if (!nombre) {
+      alert("Debe ingresar el nombre del paciente.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "turnos"), {
+        fecha,
+        hora,
+        pacienteNombre: nombre,
+        tipoConsulta: tipo || "Consulta",
+        duracionMinutos: duracion,
+        pacienteId: null,
+        asistio: false,
+        montoAbonado: 0,
+      });
+
+      const modal = bootstrap.Modal.getInstance(
+        document.getElementById("modalTurnoRapido")
+      );
+      modal.hide();
+
+      alert("Turno guardado correctamente.");
+      calendar.refetchEvents();
+
+      if (typeof cargarTurnosPaginados === "function") {
+        cargarTurnosPaginados();
+      }
+    } catch (error) {
+      console.error("Error al guardar turno rápido:", error);
+      alert("Ocurrió un error al guardar el turno.");
+    }
+  });
+
+
+
 async function calcularEstadisticas(fechaSeleccionada) {
   const hoy = fechaSeleccionada;
 
@@ -848,23 +927,48 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
   }
 }
 
-async function obtenerEventosDelDia(fecha) {
+async function obtenerEventosEnRango(fechaInicio, fechaFin) {
   const eventos = [];
   try {
     const snapshot = await getDocs(collection(db, "turnos"));
+    const pacientesSnap = await getDocs(collection(db, "pacientes"));
+
+    // Mapa rápido de pacientes por id
+    const mapaPacientes = {};
+    pacientesSnap.forEach((doc) => {
+      mapaPacientes[doc.id] = doc.data();
+    });
+
+    // Parseo fechas límite como objetos Date para comparar
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+
     snapshot.forEach((doc) => {
       const turno = doc.data();
-      if (turno.fecha === fecha) {
-        const start = new Date(`${turno.fecha}T${turno.hora}`);
+
+      // Parsear la fecha+hora del turno a Date
+      const turnoFecha = new Date(`${turno.fecha}T${turno.hora}`);
+
+      // Verificar que el turno esté dentro del rango (inclusive)
+      if (turnoFecha >= inicio && turnoFecha <= fin) {
         const duracionMinutos = Number(turno.duracionMinutos);
         const minutosFinal = isNaN(duracionMinutos) ? 15 : duracionMinutos;
-        const end = new Date(start.getTime() + minutosFinal * 60000);
+        const end = new Date(turnoFecha.getTime() + minutosFinal * 60000);
+
+        // Nombre a mostrar
+        let nombrePacienteMostrar = "Consulta";
+        if (turno.pacienteId && mapaPacientes[turno.pacienteId]) {
+          const p = mapaPacientes[turno.pacienteId];
+          nombrePacienteMostrar = p.apellido + ", " + p.nombre;
+        } else if (turno.nombre) {
+          nombrePacienteMostrar = turno.nombre;
+        } else if (turno.pacienteNombre) {
+          nombrePacienteMostrar = turno.pacienteNombre;
+        }
 
         eventos.push({
-          title:
-            turno.pacienteNombre +
-            (turno.tipoConsulta ? " - " + turno.tipoConsulta : ""),
-          start,
+          title: nombrePacienteMostrar + (turno.tipoConsulta ? " - " + turno.tipoConsulta : ""),
+          start: turnoFecha,
           end,
           extendedProps: {
             pacienteId: turno.pacienteId,
@@ -879,6 +983,7 @@ async function obtenerEventosDelDia(fecha) {
   }
   return eventos;
 }
+
 
 function mostrarAgendaTurnos() {
   mainContent.innerHTML = `
@@ -1099,6 +1204,27 @@ const cajaPorPagina = 10;
 
 // --- GESTIÓN CAJA ---
 
+// Función auxiliar para obtener lunes y sábado de la semana de una fecha YYYY-MM-DD
+function calcularSemana(fechaStr) {
+  const fecha = new Date(fechaStr);
+  const diaSemana = fecha.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+  const diffLunes = (diaSemana + 6) % 7; // días a restar para llegar lunes
+  const lunes = new Date(fecha);
+  lunes.setDate(fecha.getDate() - diffLunes);
+  const sabado = new Date(lunes);
+  sabado.setDate(lunes.getDate() + 5);
+
+  // Formatear a YYYY-MM-DD
+  function formatDate(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return { desde: formatDate(lunes), hasta: formatDate(sabado) };
+}
+
 async function cargarCaja(filtroDesde = "", filtroHasta = "") {
   try {
     const cajaSnap = await getDocs(collection(db, "caja"));
@@ -1120,19 +1246,26 @@ async function cargarCaja(filtroDesde = "", filtroHasta = "") {
       }
     });
 
+    // ---- AGREGADO: ordenar por fecha descendente (más recientes primero) ----
+    cajaMovimientosFiltrados.sort((a, b) => {
+      const fechaHoraA = new Date(a.fecha + "T" + (a.hora || "00:00"));
+      const fechaHoraB = new Date(b.fecha + "T" + (b.hora || "00:00"));
+      return fechaHoraB - fechaHoraA;
+    });
+    // -------------------------------------------------------------------------
+
     const resumenIngresos = document.getElementById("resumenIngresos");
     const resumenEgresos = document.getElementById("resumenEgresos");
     const resumenSaldo = document.getElementById("resumenSaldo");
-    const resumenCantidad = document.getElementById("resumenCantidad"); // NUEVO
+    const resumenCantidad = document.getElementById("resumenCantidad");
 
     if (resumenIngresos)
       resumenIngresos.textContent = "$" + ingresos.toFixed(2);
     if (resumenEgresos) resumenEgresos.textContent = "$" + egresos.toFixed(2);
     if (resumenSaldo)
       resumenSaldo.textContent = "$" + (ingresos - egresos).toFixed(2);
-
     if (resumenCantidad)
-      resumenCantidad.textContent = cajaMovimientosFiltrados.length; // NUEVO
+      resumenCantidad.textContent = cajaMovimientosFiltrados.length;
 
     cajaPaginaActual = 1;
     mostrarPaginaCaja();
@@ -1140,6 +1273,7 @@ async function cargarCaja(filtroDesde = "", filtroHasta = "") {
     alert("Error al cargar caja: " + error.message);
   }
 }
+
 
 function mostrarPaginaCaja() {
   const tablaCaja = document.getElementById("tablaCaja");
@@ -1217,32 +1351,32 @@ function mostrarControlesPaginacionCaja() {
 function mostrarCaja() {
   mainContent.innerHTML = `
     <div class="row">
-      <!-- Columna principal -->
       <div class="col-lg-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h1 class="mb-0">Caja diaria</h1>
           <button class="btn btn-primary" id="btnNuevoMovimiento">Nuevo Movimiento</button>
         </div>
 
-        <!-- Caja: filtros + movimientos -->
         <div class="card mb-4">
           <div class="card-body">
-            <!-- Filtros por fecha -->
-            <div class="row g-2 mb-3">
-              <div class="col-md-5">
+            <div class="row g-2 mb-3 align-items-end">
+              <div class="col-md-3 d-flex gap-1">
+                <button class="btn btn-outline-primary w-100" id="btnHoy">Hoy</button>
+                <button class="btn btn-outline-primary w-100" id="btnSemana">Semana</button>
+              </div>
+              <div class="col-md-3">
                 <label for="filtroDesde" class="form-label">Desde</label>
                 <input type="date" id="filtroDesde" class="form-control" />
               </div>
-              <div class="col-md-5">
+              <div class="col-md-3">
                 <label for="filtroHasta" class="form-label">Hasta</label>
                 <input type="date" id="filtroHasta" class="form-control" />
               </div>
-              <div class="col-md-2 d-flex align-items-end">
+              <div class="col-md-3 d-flex justify-content-end">
                 <button class="btn btn-outline-secondary w-100" id="btnAplicarFiltros">Filtrar</button>
               </div>
             </div>
 
-            <!-- Formulario oculto -->
             <div class="collapse mb-3" id="formularioCaja">
               <form id="formCaja" class="row g-3">
                 <div class="col-md-4">
@@ -1271,7 +1405,6 @@ function mostrarCaja() {
               </form>
             </div>
 
-            <!-- Tabla de movimientos -->
             <div class="table-responsive">
               <table class="table table-striped">
                 <thead>
@@ -1290,7 +1423,6 @@ function mostrarCaja() {
         </div>
       </div>
 
-      <!-- Columna lateral con estadísticas centrada y con menos margen -->
       <div class="col-lg-3 mx-auto" style="max-width: 300px; padding-left: 10px; padding-right: 10px;">
         <div class="card mb-3">
           <div class="card-body">
@@ -1326,6 +1458,27 @@ function mostrarCaja() {
       document.getElementById("formularioCaja").classList.toggle("show");
     });
 
+  document.getElementById("btnHoy").addEventListener("click", () => {
+    const hoyFecha = hoy();
+    document.getElementById("filtroDesde").value = hoyFecha;
+    document.getElementById("filtroHasta").value = hoyFecha;
+    cargarCaja(hoyFecha, hoyFecha);
+  });
+
+  document.getElementById("btnSemana").addEventListener("click", () => {
+    const hoyFecha = new Date();
+    const diaSemana = hoyFecha.getDay();
+    const lunes = new Date(hoyFecha);
+    lunes.setDate(hoyFecha.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
+    const sabado = new Date(lunes);
+    sabado.setDate(lunes.getDate() + 5);
+    const desde = lunes.toISOString().split("T")[0];
+    const hasta = sabado.toISOString().split("T")[0];
+    document.getElementById("filtroDesde").value = desde;
+    document.getElementById("filtroHasta").value = hasta;
+    cargarCaja(desde, hasta);
+  });
+
   document.getElementById("btnAplicarFiltros").addEventListener("click", () => {
     const desde = document.getElementById("filtroDesde").value;
     const hasta = document.getElementById("filtroHasta").value;
@@ -1335,7 +1488,6 @@ function mostrarCaja() {
   const formCaja = document.getElementById("formCaja");
   formCaja.addEventListener("submit", async (e) => {
     e.preventDefault();
-
     const fecha = document.getElementById("fechaCaja").value;
     const monto = parseFloat(document.getElementById("montoCaja").value);
     const pacienteNombre = document.getElementById("pacienteCaja").value.trim();
