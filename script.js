@@ -64,33 +64,89 @@ async function mostrarInicio() {
       </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-      <input type="date" id="selectorFecha" class="form-control form-control-sm" style="width: 160px;" />
-      <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." style="flex: 1; max-width: 800px;" />
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <button id="btnHoy" class="btn btn-sm btn-outline-primary">Hoy</button>
+      <button id="btnSemana" class="btn btn-sm btn-outline-primary">Semana</button>
+      <label for="fechaDesde" class="mb-0">Desde:</label>
+      <input type="date" id="fechaDesde" class="form-control form-control-sm" style="width: 150px;" />
+      <label for="fechaHasta" class="mb-0">Hasta:</label>
+      <input type="date" id="fechaHasta" class="form-control form-control-sm" style="width: 150px;" />
+      <button id="btnFiltrar" class="btn btn-sm btn-primary">Filtrar</button>
+      <input type="text" id="busquedaPaciente" class="form-control form-control-sm" placeholder="Buscar paciente por nombre o DNI..." style="flex: 1; max-width: 400px;" />
     </div>
-    <div id="resultadosBusqueda" class="mt-2"></div>
 
+    <div id="resultadosBusqueda" class="mt-2"></div>
     <div id="calendar" style="height: 600px; overflow-y: auto; border: 1px solid #ddd;"></div>
   `;
 
   await cargarTodosPacientes();
   await cargarTodosTurnos();
 
-  const selectorFecha = document.getElementById("selectorFecha");
-  selectorFecha.value = new Date().toISOString().slice(0, 10);
+  const fechaDesde = document.getElementById("fechaDesde");
+  const fechaHasta = document.getElementById("fechaHasta");
+  const btnHoy = document.getElementById("btnHoy");
+  const btnSemana = document.getElementById("btnSemana");
+  const btnFiltrar = document.getElementById("btnFiltrar");
+  const inputBusqueda = document.getElementById("busquedaPaciente");
+  const resultadosBusqueda = document.getElementById("resultadosBusqueda");
+
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  fechaDesde.value = hoyStr;
+  fechaHasta.value = hoyStr;
+
+  function actualizarCalendarioYEstadisticas(desde, hasta) {
+    if (calendar) {
+      calendar.gotoDate(desde);
+      if (desde === hasta) {
+        calendar.changeView("timeGridDay");
+      } else {
+        calendar.changeView("timeGridWeek");
+      }
+    }
+    calcularEstadisticas(desde, hasta);
+  }
+
+  btnHoy.addEventListener("click", () => {
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    fechaDesde.value = hoyStr;
+    fechaHasta.value = hoyStr;
+    calendar.changeView("timeGridDay");
+    actualizarCalendarioYEstadisticas(hoyStr, hoyStr);
+  });
+
+  btnSemana.addEventListener("click", () => {
+    const hoy = new Date();
+    const desdeStr = hoy.toISOString().slice(0, 10);
+    const hasta = new Date(hoy);
+    hasta.setDate(hoy.getDate() + 6);
+    const hastaStr = hasta.toISOString().slice(0, 10);
+
+    fechaDesde.value = desdeStr;
+    fechaHasta.value = hastaStr;
+    calendar.changeView("timeGridWeek");
+    actualizarCalendarioYEstadisticas(desdeStr, hastaStr);
+  });
+
+  btnFiltrar.addEventListener("click", () => {
+    if (!fechaDesde.value || !fechaHasta.value) {
+      alert("Por favor, complete las fechas Desde y Hasta.");
+      return;
+    }
+    actualizarCalendarioYEstadisticas(fechaDesde.value, fechaHasta.value);
+  });
 
   const calendarEl = document.getElementById("calendar");
   calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: "timeGridWeek",
-    initialDate: selectorFecha.value,
+    initialDate: hoyStr,
     slotDuration: "00:15:00",
     allDaySlot: false,
     height: "600",
     expandRows: true,
     headerToolbar: {
-      left: "prev,next today",
+      left: "prev,next",
       center: "title",
-      right: "timeGridDay,timeGridWeek",
+      right: "", // eliminamos botones today, day, week
     },
     slotLabelInterval: "01:00",
     nowIndicator: true,
@@ -98,8 +154,7 @@ async function mostrarInicio() {
     slotMaxTime: "22:00:00",
     eventOverlap: false,
 
-    events: async function (info, successCallback, failureCallback) {
-      // Pido eventos para el rango visible del calendario
+    events: async function (info, successCallback) {
       const eventos = await obtenerEventosEnRango(info.startStr, info.endStr);
       successCallback(eventos);
     },
@@ -121,8 +176,15 @@ async function mostrarInicio() {
     },
 
     eventMouseEnter: function (info) {
-      const horaInicio = info.event.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      const horaFin = info.event.end?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
+      const horaInicio = info.event.start.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const horaFin =
+        info.event.end?.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }) || "";
       const texto = `${horaInicio} - ${horaFin} | ${info.event.title}`;
 
       info.el._tooltip = new bootstrap.Tooltip(info.el, {
@@ -141,28 +203,25 @@ async function mostrarInicio() {
         info.el._tooltip.dispose();
         delete info.el._tooltip;
       }
-    }
+    },
   });
 
   calendar.render();
 
-  const inputBusqueda = document.getElementById("busquedaPaciente");
-  const resultadosBusqueda = document.getElementById("resultadosBusqueda");
-
+  // Buscador (lo dejé igual que lo tenías)
   let busquedaId = 0;
-
   inputBusqueda.addEventListener("input", async (e) => {
     const texto = e.target.value.trim().toLowerCase();
     const currentId = ++busquedaId;
-
     resultadosBusqueda.innerHTML = "";
 
     if (texto === "") return;
 
     try {
       const pacientesEncontrados = [];
+      const turnosEncontradosSinPaciente = [];
       const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
-
+      const turnosSnapshot = await getDocs(collection(db, "turnos"));
       if (currentId !== busquedaId) return;
 
       pacientesSnapshot.forEach((doc) => {
@@ -180,10 +239,24 @@ async function mostrarInicio() {
         }
       });
 
+      turnosSnapshot.forEach((doc) => {
+        const t = doc.data();
+        if (
+          (!t.pacienteId || t.pacienteId === null) &&
+          t.pacienteNombre?.toLowerCase().includes(texto)
+        ) {
+          turnosEncontradosSinPaciente.push({ id: doc.id, ...t });
+        }
+      });
+
       if (currentId !== busquedaId) return;
 
-      if (pacientesEncontrados.length === 0) {
-        resultadosBusqueda.innerHTML = "<p>No se encontraron pacientes.</p>";
+      if (
+        pacientesEncontrados.length === 0 &&
+        turnosEncontradosSinPaciente.length === 0
+      ) {
+        resultadosBusqueda.innerHTML =
+          "<p>No se encontraron pacientes ni turnos.</p>";
         return;
       }
 
@@ -191,11 +264,8 @@ async function mostrarInicio() {
       const fechaHoy = new Date().toISOString().slice(0, 10);
 
       for (const paciente of pacientesEncontrados) {
-        const turnosSnap = await getDocs(collection(db, "turnos"));
-        if (currentId !== busquedaId) return;
-
         const turnos = [];
-        turnosSnap.forEach((docu) => {
+        turnosSnapshot.forEach((docu) => {
           const t = docu.data();
           if (t.pacienteId === paciente.id && t.fecha >= fechaHoy) {
             turnos.push(t);
@@ -206,37 +276,42 @@ async function mostrarInicio() {
           <strong>${paciente.apellido}, ${paciente.nombre}</strong> - DNI: ${paciente.dni}<br/>
           <em>Próximos turnos:</em>
           <ul>`;
+        html +=
+          turnos.length === 0
+            ? "<li>No tiene próximos turnos.</li>"
+            : turnos
+                .map(
+                  (t) =>
+                    `<li>${t.fecha} ${t.hora} - ${
+                      t.tipoConsulta || "Consulta"
+                    }</li>`
+                )
+                .join("");
+        html += "</ul></li>";
+      }
 
-        if (turnos.length === 0) {
-          html += "<li>No tiene próximos turnos.</li>";
-        } else {
-          turnos.forEach((t) => {
-            html += `<li>${t.fecha} ${t.hora} - ${t.tipoConsulta || "Consulta"}</li>`;
-          });
-        }
-
+      if (turnosEncontradosSinPaciente.length > 0) {
+        html += `<li class="list-group-item list-group-item-warning">
+          <strong>Turnos sin paciente registrado</strong>
+          <ul>`;
+        turnosEncontradosSinPaciente.forEach((t) => {
+          html += `<li>${t.fecha} ${t.hora} - ${
+            t.pacienteNombre || "Consulta"
+          } - ${t.tipoConsulta || "Consulta"}</li>`;
+        });
         html += "</ul></li>";
       }
 
       html += "</ul>";
-      if (currentId === busquedaId) {
-        resultadosBusqueda.innerHTML = html;
-      }
+      resultadosBusqueda.innerHTML = html;
     } catch (error) {
       console.error("Error en búsqueda:", error);
-      if (currentId === busquedaId) {
-        resultadosBusqueda.innerHTML =
-          "<p class='text-danger'>Error al buscar pacientes.</p>";
-      }
+      resultadosBusqueda.innerHTML =
+        "<p class='text-danger'>Error al buscar pacientes.</p>";
     }
   });
 
-  selectorFecha.addEventListener("change", (e) => {
-    calendar.gotoDate(e.target.value);
-    calcularEstadisticas(e.target.value);
-  });
-
-  calcularEstadisticas(selectorFecha.value);
+  calcularEstadisticas(hoyStr, hoyStr);
 }
 
 document
@@ -247,7 +322,9 @@ document
     const nombre = document.getElementById("turnoRapidoNombre").value.trim();
     const fecha = document.getElementById("turnoRapidoFecha").value;
     const hora = document.getElementById("turnoRapidoHora").value;
-    const duracion = parseInt(document.getElementById("turnoRapidoDuracion").value);
+    const duracion = parseInt(
+      document.getElementById("turnoRapidoDuracion").value
+    );
     const tipo = document.getElementById("turnoRapidoTipo").value.trim();
 
     if (!nombre) {
@@ -283,8 +360,6 @@ document
       alert("Ocurrió un error al guardar el turno.");
     }
   });
-
-
 
 async function calcularEstadisticas(fechaSeleccionada) {
   const hoy = fechaSeleccionada;
@@ -812,24 +887,43 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
       }
  <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
 <td>
-  <div class="d-flex justify-content-end gap-1 flex-wrap">
-    ${
-      !t.asistio && !t.cancelado && !t.ausente
-        ? `
-      <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">✔️</button>
-      <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">⚠️</button>
-      <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">❌</button>
-      `
-        : ""
-    }
-    <button class="btn btn-sm btn-info btn-editar" data-id="${
-      t.id
-    }" title="Editar turno">✏️</button>
-    <button class="btn btn-sm btn-danger btn-eliminar" data-id="${
-      t.id
-    }" title="Eliminar turno">🗑️</button>
+  <div class="d-flex justify-content-end gap-4 flex-wrap">
+    <div class="d-flex gap-2">
+      ${
+        !t.asistio && !t.cancelado && !t.ausente
+          ? `
+          <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">
+            <i class="bi bi-check-circle"></i>
+          </button>
+          <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">
+            <i class="bi bi-x-octagon"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">
+            <i class="bi bi-person-x"></i>
+          </button>
+        `
+          : ""
+      }
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-info btn-editar" data-id="${
+        t.id
+      }" title="Editar turno">
+        <i class="bi bi-pencil"></i>
+      </button>
+      ${
+        t.asistio
+          ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido">
+              <i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i>
+            </button>`
+          : `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}" title="Eliminar turno">
+              <i class="bi bi-trash"></i>
+            </button>`
+      }
+    </div>
   </div>
 </td>
+
 
   `;
       tablaTurnos.appendChild(fila);
@@ -967,7 +1061,9 @@ async function obtenerEventosEnRango(fechaInicio, fechaFin) {
         }
 
         eventos.push({
-          title: nombrePacienteMostrar + (turno.tipoConsulta ? " - " + turno.tipoConsulta : ""),
+          title:
+            nombrePacienteMostrar +
+            (turno.tipoConsulta ? " - " + turno.tipoConsulta : ""),
           start: turnoFecha,
           end,
           extendedProps: {
@@ -983,7 +1079,6 @@ async function obtenerEventosEnRango(fechaInicio, fechaFin) {
   }
   return eventos;
 }
-
 
 function mostrarAgendaTurnos() {
   mainContent.innerHTML = `
@@ -1029,7 +1124,9 @@ function mostrarAgendaTurnos() {
           <th>Tipo Consulta</th>
           <th>Asistió</th>
           <th>Monto abonado</th>
-          <th>Acciones</th>
+          <th style="text-align: right; padding-right: 3rem;">Acciones</th>
+
+
         </tr>
       </thead>
       <tbody id="tablaTurnos"></tbody>
@@ -1274,7 +1371,6 @@ async function cargarCaja(filtroDesde = "", filtroHasta = "") {
   }
 }
 
-
 function mostrarPaginaCaja() {
   const tablaCaja = document.getElementById("tablaCaja");
   if (!tablaCaja) return;
@@ -1357,6 +1453,48 @@ function mostrarCaja() {
           <button class="btn btn-primary" id="btnNuevoMovimiento">Nuevo Movimiento</button>
         </div>
 
+        <!-- Modal Nuevo Movimiento -->
+        <div class="modal fade" id="modalNuevoMovimiento" tabindex="-1" aria-labelledby="modalNuevoMovimientoLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <form id="formCajaModal" class="needs-validation" novalidate>
+                <div class="modal-header">
+                  <h5 class="modal-title" id="modalNuevoMovimientoLabel">Nuevo Movimiento</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label for="fechaCajaModal" class="form-label">Fecha *</label>
+                    <input type="date" id="fechaCajaModal" class="form-control" value="${hoy()}" required />
+                    <div class="invalid-feedback">Por favor ingrese una fecha válida.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="montoCajaModal" class="form-label">Monto *</label>
+                    <input type="number" id="montoCajaModal" class="form-control" required />
+                    <div class="invalid-feedback">Por favor ingrese un monto válido.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="pacienteCajaModal" class="form-label">Paciente</label>
+                    <input type="text" id="pacienteCajaModal" class="form-control" />
+                  </div>
+                  <div class="mb-3">
+                    <label for="tipoConsultaCajaModal" class="form-label">Tipo de Consulta</label>
+                    <input type="text" id="tipoConsultaCajaModal" class="form-control" />
+                  </div>
+                  <div class="mb-3">
+                    <label for="detalleCajaModal" class="form-label">Detalle</label>
+                    <input type="text" id="detalleCajaModal" class="form-control" />
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Agregar Movimiento</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <div class="card mb-4">
           <div class="card-body">
             <div class="row g-2 mb-3 align-items-end">
@@ -1375,34 +1513,6 @@ function mostrarCaja() {
               <div class="col-md-3 d-flex justify-content-end">
                 <button class="btn btn-outline-secondary w-100" id="btnAplicarFiltros">Filtrar</button>
               </div>
-            </div>
-
-            <div class="collapse mb-3" id="formularioCaja">
-              <form id="formCaja" class="row g-3">
-                <div class="col-md-4">
-                  <label for="fechaCaja" class="form-label">Fecha *</label>
-                  <input type="date" id="fechaCaja" class="form-control" value="${hoy()}" required />
-                </div>
-                <div class="col-md-4">
-                  <label for="montoCaja" class="form-label">Monto *</label>
-                  <input type="number" id="montoCaja" class="form-control" required />
-                </div>
-                <div class="col-md-4">
-                  <label for="detalleCaja" class="form-label">Detalle</label>
-                  <input type="text" id="detalleCaja" class="form-control" />
-                </div>
-                <div class="col-md-6">
-                  <label for="pacienteCaja" class="form-label">Paciente</label>
-                  <input type="text" id="pacienteCaja" class="form-control" />
-                </div>
-                <div class="col-md-6">
-                  <label for="tipoConsultaCaja" class="form-label">Tipo de Consulta</label>
-                  <input type="text" id="tipoConsultaCaja" class="form-control" />
-                </div>
-                <div class="col-12">
-                  <button type="submit" class="btn btn-success">Agregar Movimiento</button>
-                </div>
-              </form>
             </div>
 
             <div class="table-responsive">
@@ -1452,12 +1562,17 @@ function mostrarCaja() {
     </div>
   `;
 
+  // Abrir modal al clickear el botón
   document
     .getElementById("btnNuevoMovimiento")
     .addEventListener("click", () => {
-      document.getElementById("formularioCaja").classList.toggle("show");
+      const modal = new bootstrap.Modal(
+        document.getElementById("modalNuevoMovimiento")
+      );
+      modal.show();
     });
 
+  // Botones filtros
   document.getElementById("btnHoy").addEventListener("click", () => {
     const hoyFecha = hoy();
     document.getElementById("filtroDesde").value = hoyFecha;
@@ -1485,21 +1600,26 @@ function mostrarCaja() {
     cargarCaja(desde, hasta);
   });
 
-  const formCaja = document.getElementById("formCaja");
-  formCaja.addEventListener("submit", async (e) => {
+  // Formulario modal submit
+  const formCajaModal = document.getElementById("formCajaModal");
+  formCajaModal.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const fecha = document.getElementById("fechaCaja").value;
-    const monto = parseFloat(document.getElementById("montoCaja").value);
-    const pacienteNombre = document.getElementById("pacienteCaja").value.trim();
-    const tipoConsulta = document
-      .getElementById("tipoConsultaCaja")
-      .value.trim();
-    const detalle = document.getElementById("detalleCaja").value.trim();
 
-    if (!fecha || isNaN(monto)) {
-      alert("Ingrese fecha y monto válido.");
+    // Validación Bootstrap nativa
+    if (!formCajaModal.checkValidity()) {
+      formCajaModal.classList.add("was-validated");
       return;
     }
+
+    const fecha = document.getElementById("fechaCajaModal").value;
+    const monto = parseFloat(document.getElementById("montoCajaModal").value);
+    const pacienteNombre = document
+      .getElementById("pacienteCajaModal")
+      .value.trim();
+    const tipoConsulta = document
+      .getElementById("tipoConsultaCajaModal")
+      .value.trim();
+    const detalle = document.getElementById("detalleCajaModal").value.trim();
 
     try {
       await addDoc(collection(db, "caja"), {
@@ -1510,8 +1630,14 @@ function mostrarCaja() {
         detalle: detalle || "-",
       });
       alert("Movimiento agregado.");
-      formCaja.reset();
-      document.getElementById("fechaCaja").value = hoy();
+      formCajaModal.reset();
+      formCajaModal.classList.remove("was-validated");
+      // Cerrar modal
+      const modalInstance = bootstrap.Modal.getInstance(
+        document.getElementById("modalNuevoMovimiento")
+      );
+      modalInstance.hide();
+
       cargarCaja();
     } catch (error) {
       alert("Error al agregar movimiento: " + error.message);
