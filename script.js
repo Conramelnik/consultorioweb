@@ -1,6 +1,10 @@
 // Función auxiliar para obtener fecha hoy en formato YYYY-MM-DD
 function hoy() {
-  return new Date().toISOString().slice(0, 10);
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+  const dia = String(ahora.getDate()).padStart(2, "0");
+  return `${año}-${mes}-${dia}`;
 }
 
 // Import Firebase
@@ -41,6 +45,7 @@ let turnosFiltrados = [];
 let pacientesGlobalFiltrados = []; // pacientes filtrados
 
 let calendar;
+
 async function mostrarInicio() {
   mainContent.innerHTML = `
     <h1 class="mb-4">Inicio - Agenda</h1>
@@ -90,7 +95,8 @@ async function mostrarInicio() {
   const inputBusqueda = document.getElementById("busquedaPaciente");
   const resultadosBusqueda = document.getElementById("resultadosBusqueda");
 
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = hoy();
+
   fechaDesde.value = hoyStr;
   fechaHasta.value = hoyStr;
 
@@ -107,7 +113,8 @@ async function mostrarInicio() {
   }
 
   btnHoy.addEventListener("click", () => {
-    const hoyStr = new Date().toISOString().slice(0, 10);
+    const hoyStr = hoy();
+
     fechaDesde.value = hoyStr;
     fechaHasta.value = hoyStr;
     calendar.changeView("timeGridDay");
@@ -292,7 +299,7 @@ async function mostrarInicio() {
 
       if (turnosEncontradosSinPaciente.length > 0) {
         html += `<li class="list-group-item list-group-item-warning">
-          <strong>Turnos sin paciente registrado</strong>
+          <strong>"Paciente no registrado (sin ficha creada)"</strong>
           <ul>`;
         turnosEncontradosSinPaciente.forEach((t) => {
           html += `<li>${t.fecha} ${t.hora} - ${
@@ -571,6 +578,8 @@ function agregarEventosVerFicha() {
         paciente.genero || "-";
       document.getElementById("fichaFechaNacimiento").textContent =
         paciente.fechaNacimiento || "-";
+      document.getElementById("fichaFechaIngreso").textContent =
+        paciente.fechaIngreso || "-";
 
       // Vaciar listas
       const ulTurnos = document.getElementById("fichaTurnos");
@@ -856,7 +865,6 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
       }
     });
 
-    // Ordenar por fecha y hora
     turnos.sort((a, b) => {
       const fechaA = `${a.fecha}T${a.hora}`;
       const fechaB = `${b.fecha}T${b.hora}`;
@@ -871,68 +879,69 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
     for (const t of turnosPagina) {
       const fila = document.createElement("tr");
       fila.innerHTML = `
-    <td>${t.fecha}</td>
-    <td>${t.hora}</td>
-    <td>${t.pacienteNombre}</td>
-    <td>${t.tipoConsulta || "-"}</td>
-    <td>
-      ${
-        t.asistio
-          ? '<span class="text-success fw-bold">Asistió</span>'
-          : t.cancelado
-          ? '<span class="text-warning fw-bold">Cancelado</span>'
-          : t.ausente
-          ? '<span class="text-secondary fw-bold">Ausente</span>'
-          : "-"
-      }
- <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
-<td>
-  <div class="d-flex justify-content-end gap-4 flex-wrap">
-    <div class="d-flex gap-2">
-      ${
-        !t.asistio && !t.cancelado && !t.ausente
-          ? `
-          <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">
-            <i class="bi bi-check-circle"></i>
-          </button>
-          <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">
-            <i class="bi bi-x-octagon"></i>
-          </button>
-          <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">
-            <i class="bi bi-person-x"></i>
-          </button>
-        `
-          : ""
-      }
-    </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-info btn-editar" data-id="${
-        t.id
-      }" title="Editar turno">
-        <i class="bi bi-pencil"></i>
-      </button>
-      ${
-        t.asistio
-          ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido">
-              <i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i>
-            </button>`
-          : `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}" title="Eliminar turno">
-              <i class="bi bi-trash"></i>
-            </button>`
-      }
-    </div>
-  </div>
-</td>
-
-
-  `;
+        <td>${t.fecha}</td>
+        <td>${t.hora}</td>
+        <td>${t.pacienteNombre}</td>
+        <td>${t.tipoConsulta || "-"}</td>
+        <td>
+          ${
+            t.asistio
+              ? '<span class="text-success fw-bold">Asistió</span>'
+              : t.cancelado
+              ? '<span class="text-warning fw-bold">Cancelado</span>'
+              : t.ausente
+              ? '<span class="text-secondary fw-bold">Ausente</span>'
+              : "-"
+          }
+        </td>
+        <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
+        <td>
+          <div class="d-flex justify-content-end gap-4 flex-wrap">
+            <div class="d-flex gap-2">
+              ${
+                !t.asistio && !t.cancelado && !t.ausente
+                  ? `
+                    <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">
+                      <i class="bi bi-check-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">
+                      <i class="bi bi-x-octagon"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">
+                      <i class="bi bi-person-x"></i>
+                    </button>
+                  `
+                  : ""
+              }
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-info btn-editar" data-id="${
+                t.id
+              }" title="Editar turno">
+                <i class="bi bi-pencil"></i>
+              </button>
+              ${
+                t.asistio
+                  ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido">
+                      <i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i>
+                    </button>`
+                  : `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}" title="Eliminar turno">
+                      <i class="bi bi-trash"></i>
+                    </button>`
+              }
+            </div>
+          </div>
+        </td>
+      `;
       tablaTurnos.appendChild(fila);
     }
 
-    // Eventos botones
+    // Eventos botones (usando .closest)
     document.querySelectorAll(".btn-asistio").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const turnoId = e.target.dataset.id;
+        const boton = e.target.closest(".btn-asistio");
+        if (!boton) return;
+        const turnoId = boton.dataset.id;
         const monto = prompt("Monto abonado:", "0");
         if (monto === null) return;
         const montoNum = parseFloat(monto);
@@ -961,44 +970,49 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
         }
 
         alert("Asistencia registrada.");
-        cargarTurnosPaginados(pagina); // recargar página actual
+        cargarTurnosPaginados(pagina);
       });
     });
 
     document.querySelectorAll(".btn-cancelar").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const turnoId = e.target.dataset.id;
+        const boton = e.target.closest(".btn-cancelar");
+        if (!boton) return;
+        const turnoId = boton.dataset.id;
         if (!confirm("¿Marcar este turno como cancelado?")) return;
         await updateDoc(doc(db, "turnos", turnoId), { cancelado: true });
         alert("Turno cancelado.");
         cargarTurnosPaginados(pagina);
       });
     });
+
     document.querySelectorAll(".btn-ausente").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const turnoId = e.target.dataset.id;
+        const boton = e.target.closest(".btn-ausente");
+        if (!boton) return;
+        const turnoId = boton.dataset.id;
         if (!confirm("¿Marcar este turno como ausente?")) return;
         await updateDoc(doc(db, "turnos", turnoId), { ausente: true });
         alert("Turno marcado como ausente.");
         cargarTurnosPaginados(pagina);
       });
     });
+
     document.querySelectorAll(".btn-eliminar").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        const turnoId = e.target.dataset.id;
+        const boton = e.target.closest(".btn-eliminar");
+        if (!boton) return;
+        const turnoId = boton.dataset.id;
         if (!confirm("¿Eliminar este turno?")) return;
 
         try {
           await deleteDoc(doc(db, "turnos", turnoId));
           alert("Turno eliminado.");
 
-          // ✅ Recalcular la página actual según el botón activo
           const btnActivo = document.querySelector(
             "#paginacionTurnos .btn-primary"
           );
           const paginaActual = btnActivo ? parseInt(btnActivo.textContent) : 1;
-
-          // 🔁 Volver a cargar la página actual
           cargarTurnosPaginados(paginaActual);
         } catch (error) {
           alert("Error al eliminar turno: " + error.message);
@@ -1006,7 +1020,6 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
       });
     });
 
-    // Paginación
     for (let i = 1; i <= totalPaginas; i++) {
       const btn = document.createElement("button");
       btn.className = `btn btn-sm mx-1 ${
@@ -1099,9 +1112,17 @@ function mostrarAgendaTurnos() {
         </select>
       </div>
       <div class="col-md-6">
-        <label for="tipoConsulta" class="form-label">Tipo de Consulta</label>
-        <input type="text" id="tipoConsulta" class="form-control" />
-      </div>
+  <label for="tipoConsulta" class="form-label">Tipo de Consulta</label>
+  <select id="tipoConsulta" class="form-select">
+    <option value="" disabled selected>Seleccionar tipo</option>
+    <option value="Consulta general">Consulta general</option>
+    <option value="Control ortodoncia">Control ortodoncia</option>
+    <option value="Extracción">Extracción</option>
+    <option value="Reconstrucción">Reconstrucción</option>
+    <option value="Limpieza">Limpieza</option>
+  </select>
+</div>
+
       <div class="col-md-6">
         <label for="duracionTurno" class="form-label">Duración (minutos)</label>
         <select id="duracionTurno" class="form-select">
@@ -1115,6 +1136,7 @@ function mostrarAgendaTurnos() {
         <button type="submit" class="btn btn-primary">Agregar Turno</button>
       </div>
     </form>
+
     <table class="table table-striped">
       <thead>
         <tr>
@@ -1125,21 +1147,21 @@ function mostrarAgendaTurnos() {
           <th>Asistió</th>
           <th>Monto abonado</th>
           <th style="text-align: right; padding-right: 3rem;">Acciones</th>
-
-
         </tr>
       </thead>
       <tbody id="tablaTurnos"></tbody>
-      <div id="paginacionTurnos" class="my-3 d-flex justify-content-center align-items-center"></div>
-
     </table>
+    <div id="paginacionTurnos" class="my-3 d-flex justify-content-center align-items-center"></div>
   `;
 
   cargarPacientesSelect();
   cargarTurnosPaginados();
+
+  // Botón editar - con estado
   document.addEventListener("click", async (e) => {
-    if (e.target.classList.contains("btn-editar")) {
-      const turnoId = e.target.dataset.id;
+    const btnEditar = e.target.closest(".btn-editar");
+    if (btnEditar) {
+      const turnoId = btnEditar.dataset.id;
 
       try {
         const docSnap = await getDoc(doc(db, "turnos", turnoId));
@@ -1152,6 +1174,14 @@ function mostrarAgendaTurnos() {
         document.getElementById("editarHora").value = t.hora;
         document.getElementById("editarMonto").value = t.montoAbonado || 0;
 
+        // Setear el estado actual del turno
+        let estado = "";
+        if (t.asistio) estado = "asistio";
+        else if (t.cancelado) estado = "cancelado";
+        else if (t.ausente) estado = "ausente";
+
+        document.getElementById("editarEstado").value = estado;
+
         const modal = new bootstrap.Modal(
           document.getElementById("modalEditarTurno")
         );
@@ -1162,6 +1192,7 @@ function mostrarAgendaTurnos() {
     }
   });
 
+  // Formulario de edición
   document
     .getElementById("formEditarTurno")
     .addEventListener("submit", async (e) => {
@@ -1172,70 +1203,35 @@ function mostrarAgendaTurnos() {
       const hora = document.getElementById("editarHora").value;
       const monto =
         parseFloat(document.getElementById("editarMonto").value) || 0;
+      const estado = document.getElementById("editarEstado").value;
+
+      const dataUpdate = {
+        fecha,
+        hora,
+        montoAbonado: monto,
+        asistio: false,
+        cancelado: false,
+        ausente: false,
+      };
+
+      if (estado === "asistio") dataUpdate.asistio = true;
+      else if (estado === "cancelado") dataUpdate.cancelado = true;
+      else if (estado === "ausente") dataUpdate.ausente = true;
 
       try {
-        await updateDoc(doc(db, "turnos", id), {
-          fecha,
-          hora,
-          montoAbonado: monto,
-        });
+        await updateDoc(doc(db, "turnos", id), dataUpdate);
 
         alert("Turno actualizado.");
         bootstrap.Modal.getInstance(
           document.getElementById("modalEditarTurno")
         ).hide();
-        cargarTurnosPaginados(1);
+        cargarTurnosPaginados();
       } catch (err) {
         alert("Error al actualizar turno.");
       }
     });
 
-  document
-    .getElementById("formEditarTurno")
-    .addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const id = document.getElementById("turnoIdEditar").value;
-      const fecha = document.getElementById("fechaEditar").value;
-      const hora = document.getElementById("horaEditar").value;
-      const tipo = document.getElementById("tipoConsultaEditar").value.trim();
-      const duracion = parseInt(
-        document.getElementById("duracionEditar").value,
-        10
-      );
-
-      const contenedorMonto = document.getElementById("contenedorMontoEditar");
-      const inputMonto = document.getElementById("montoEditar");
-
-      try {
-        const updateData = {
-          fecha,
-          hora,
-          tipoConsulta: tipo,
-          duracionMinutos: duracion,
-        };
-
-        if (contenedorMonto.style.display === "block") {
-          const montoVal = parseFloat(inputMonto.value);
-          if (isNaN(montoVal) || montoVal < 0) {
-            alert("Monto inválido");
-            return;
-          }
-          updateData.montoAbonado = montoVal;
-        }
-
-        await updateDoc(doc(db, "turnos", id), updateData);
-
-        alert("Turno actualizado.");
-        bootstrap.Modal.getInstance(
-          document.getElementById("modalEditarTurno")
-        ).hide();
-        cargarTurnosPaginados(1);
-      } catch (err) {
-        alert("Error al actualizar turno.");
-      }
-    });
-
+  // Formulario para agregar turnos
   document.getElementById("formTurno").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -1256,7 +1252,7 @@ function mostrarAgendaTurnos() {
     }
 
     try {
-      // 🔒 Verificar si ya hay un turno en ese horario
+      // Verificar duplicado
       const turnosSnapshot = await getDocs(collection(db, "turnos"));
       let yaExiste = false;
       turnosSnapshot.forEach((doc) => {
@@ -1275,6 +1271,7 @@ function mostrarAgendaTurnos() {
         alert("Paciente no encontrado.");
         return;
       }
+
       const pacienteData = pacienteDoc.data();
 
       await addDoc(collection(db, "turnos"), {
@@ -1287,6 +1284,7 @@ function mostrarAgendaTurnos() {
         montoAbonado: 0,
         duracionMinutos: duracion,
       });
+
       alert("Turno agregado.");
       cargarTurnosPaginados();
       e.target.reset();
@@ -1295,6 +1293,7 @@ function mostrarAgendaTurnos() {
     }
   });
 }
+
 let cajaMovimientosFiltrados = [];
 let cajaPaginaActual = 1;
 const cajaPorPagina = 10;
@@ -1648,23 +1647,26 @@ function mostrarCaja() {
 }
 
 // --- MANEJO DEL SIDEBAR ---
-
 // Iniciar mostrando Inicio
 mostrarInicio();
 
 document.querySelectorAll("#sidebar a.nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
+
     // 🔴 Limpiar búsqueda si estás viniendo de la sección Inicio
     const inputBusqueda = document.getElementById("busquedaPaciente");
     const resultadosBusqueda = document.getElementById("resultadosBusqueda");
     if (inputBusqueda) inputBusqueda.value = "";
     if (resultadosBusqueda) resultadosBusqueda.innerHTML = "";
 
+    // Marcar como activo
     document
       .querySelectorAll("#sidebar a.nav-link")
       .forEach((l) => l.classList.remove("active"));
     e.target.classList.add("active");
+
+    // Mostrar sección
     const seccion = e.target.dataset.section;
     if (seccion === "inicio") mostrarInicio();
     else if (seccion === "pacientes") mostrarGestionPacientes();

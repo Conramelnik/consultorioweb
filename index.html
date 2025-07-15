@@ -41,8 +41,15 @@
             <a href="#" class="nav-link active" data-section="inicio">Inicio</a>
           </li>
           <li class="nav-item mb-2">
-            <a href="#" class="nav-link" data-section="pacientes">Pacientes</a>
+            <a
+              href="#"
+              class="nav-link"
+              data-section="pacientes"
+              id="linkPacientes"
+              >Pacientes</a
+            >
           </li>
+
           <li class="nav-item mb-2">
             <a href="#" class="nav-link" data-section="turnos">Turnos</a>
           </li>
@@ -56,7 +63,6 @@
       <main id="mainContent" class="flex-grow-1 p-4 overflow-auto"></main>
     </div>
 
-    <!-- Modal ficha paciente -->
     <!-- Modal ficha paciente -->
     <div
       class="modal fade"
@@ -79,14 +85,9 @@
             ></button>
           </div>
 
-          <div
-            class="modal-body p-3"
-            style="max-height: 70vh; overflow-y: auto"
-          >
-            <!-- Datos básicos en filas alineadas -->
-            <!-- DATOS PACIENTE MODAL VER FICHA -->
-            <div class="row mb-3 gx-3 gy-2">
-              <!-- Fila 1 -->
+          <div class="modal-body p-3" style="max-height: 70vh; overflow-y: auto">
+            <!-- Datos básicos organizados en 3 columnas -->
+            <div class="row gx-3 gy-3">
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Apellido</label>
                 <p id="fichaApellido" class="mb-0"></p>
@@ -100,7 +101,6 @@
                 <p id="fichaDNI" class="mb-0"></p>
               </div>
 
-              <!-- Fila 2 -->
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Fecha Nac.</label>
                 <p id="fichaFechaNacimiento" class="mb-0"></p>
@@ -114,7 +114,6 @@
                 <p id="fichaGenero" class="mb-0"></p>
               </div>
 
-              <!-- Fila 3 -->
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Dirección</label>
                 <p id="fichaDireccion" class="mb-0"></p>
@@ -124,12 +123,13 @@
                 <p id="fichaObraSocial" class="mb-0"></p>
               </div>
               <div class="col-md-4">
-                <!-- Espacio vacío para alinear columnas -->
+                <label class="form-label fw-semibold">Fecha Ingreso</label>
+                <p id="fichaFechaIngreso" class="mb-0"></p>
               </div>
             </div>
 
             <!-- Pestañas para secciones -->
-            <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
+            <ul class="nav nav-tabs mt-4" id="fichaTabs" role="tablist">
               <li class="nav-item" role="presentation">
                 <button
                   class="nav-link active"
@@ -188,11 +188,7 @@
               </li>
             </ul>
 
-            <div
-              class="tab-content mt-3"
-              id="fichaTabsContent"
-              style="min-height: 150px"
-            >
+            <div class="tab-content mt-3" id="fichaTabsContent" style="min-height: 150px">
               <div
                 class="tab-pane fade show active"
                 id="turnos-tab-pane"
@@ -241,77 +237,6 @@
       </div>
     </div>
 
-    <!-- Modal editar turno -->
-    <div
-      class="modal fade"
-      id="modalEditarTurno"
-      tabindex="-1"
-      aria-labelledby="modalEditarTurnoLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form id="formEditarTurno">
-            <div class="modal-header">
-              <h5 class="modal-title" id="modalEditarTurnoLabel">
-                Editar Turno
-              </h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Cerrar"
-              ></button>
-            </div>
-            <div class="modal-body">
-              <input type="hidden" id="editarTurnoId" />
-
-              <div class="mb-3">
-                <label for="editarFecha" class="form-label">Fecha</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  id="editarFecha"
-                  required
-                />
-              </div>
-
-              <div class="mb-3">
-                <label for="editarHora" class="form-label">Hora</label>
-                <input
-                  type="time"
-                  class="form-control"
-                  id="editarHora"
-                  required
-                />
-              </div>
-
-              <div class="mb-3">
-                <label for="editarMonto" class="form-label"
-                  >Monto abonado</label
-                >
-                <input
-                  type="number"
-                  class="form-control"
-                  id="editarMonto"
-                  min="0"
-                  step="0.01"
-                />
-                <div id="editarMontoAviso" class="form-text text-muted">
-                  Solo si el paciente asistió
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary">
-                Guardar cambios
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal turno rápido -->
     <div
       class="modal fade"
@@ -367,10 +292,15 @@
             </div>
 
             <div class="mb-3">
-              <label for="turnoRapidoTipo" class="form-label"
-                >Tipo de consulta</label
-              >
-              <input type="text" class="form-control" id="turnoRapidoTipo" />
+              <label for="turnoRapidoTipo" class="form-label">Tipo de consulta</label>
+              <select class="form-select" id="turnoRapidoTipo" required>
+                <option value="" disabled selected>Seleccionar tipo</option>
+                <option value="Consulta general">Consulta general</option>
+                <option value="Control ortodoncia">Control ortodoncia</option>
+                <option value="Extracción">Extracción</option>
+                <option value="Reconstrucción">Reconstrucción</option>
+                <option value="Limpieza">Limpieza</option>
+              </select>
             </div>
           </div>
           <div class="modal-footer">
@@ -380,18 +310,18 @@
       </div>
     </div>
 
-    <!-- Modal turno rápido -->
+    <!-- Modal Editar Turno -->
     <div
       class="modal fade"
-      id="modalTurnoRapido"
+      id="modalEditarTurno"
       tabindex="-1"
-      aria-labelledby="modalTurnoRapidoLabel"
+      aria-labelledby="modalEditarTurnoLabel"
       aria-hidden="true"
     >
       <div class="modal-dialog">
-        <form id="formTurnoRapido" class="modal-content">
+        <form id="formEditarTurno" class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="modalTurnoRapidoLabel">Nuevo Turno</h5>
+            <h5 class="modal-title" id="modalEditarTurnoLabel">Editar Turno</h5>
             <button
               type="button"
               class="btn-close"
@@ -400,49 +330,63 @@
             ></button>
           </div>
           <div class="modal-body">
-            <p>
-              <strong>Fecha:</strong> <span id="turnoRapidoFechaTexto"></span>
-            </p>
-            <p>
-              <strong>Hora:</strong> <span id="turnoRapidoHoraTexto"></span>
-            </p>
-
-            <input type="hidden" id="turnoRapidoFecha" />
-            <input type="hidden" id="turnoRapidoHora" />
+            <input type="hidden" id="editarTurnoId" />
 
             <div class="mb-3">
-              <label for="turnoRapidoNombre" class="form-label"
-                >Nombre del paciente</label
-              >
+              <label for="editarFecha" class="form-label">Fecha *</label>
               <input
-                type="text"
+                type="date"
                 class="form-control"
-                id="turnoRapidoNombre"
+                id="editarFecha"
                 required
               />
             </div>
 
             <div class="mb-3">
-              <label for="turnoRapidoDuracion" class="form-label"
-                >Duración</label
-              >
-              <select class="form-select" id="turnoRapidoDuracion">
-                <option value="15">15 minutos</option>
-                <option value="30" selected>30 minutos</option>
-                <option value="45">45 minutos</option>
-                <option value="60">1 hora</option>
-              </select>
+              <label for="editarHora" class="form-label">Hora *</label>
+              <input
+                type="time"
+                class="form-control"
+                id="editarHora"
+                required
+              />
             </div>
 
             <div class="mb-3">
-              <label for="turnoRapidoTipo" class="form-label"
-                >Tipo de consulta</label
+              <label for="editarMonto" class="form-label">Monto abonado</label>
+              <input
+                type="number"
+                class="form-control"
+                id="editarMonto"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="editarEstado" class="form-label"
+                >Estado del turno</label
               >
-              <input type="text" class="form-control" id="turnoRapidoTipo" />
+              <select id="editarEstado" class="form-select">
+                <option value="">Sin estado</option>
+                <option value="asistio">Asistió</option>
+                <option value="cancelado">Cancelado</option>
+                <option value="ausente">Ausente</option>
+              </select>
             </div>
           </div>
+
           <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Agendar Turno</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              Guardar cambios
+            </button>
           </div>
         </form>
       </div>
