@@ -18,6 +18,9 @@ import {
   updateDoc,
   getDoc,
   deleteDoc,
+  query,
+  where,
+  orderBy,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
 // Config Firebase
@@ -548,88 +551,20 @@ function mostrarControlesPaginacion(totalPaginas) {
   controles.appendChild(btnNext);
 }
 
+// Función para agregar eventos "Ver ficha" y manejar mostrar/ocultar elementos
 function agregarEventosVerFicha() {
   document.querySelectorAll(".ver-ficha").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
+    btn.addEventListener("click", (e) => {
       const pacienteId = e.target.dataset.id;
       if (!pacienteId) return;
 
-      const pacienteRef = doc(db, "pacientes", pacienteId);
-      const pacienteSnap = await getDoc(pacienteRef);
-      if (!pacienteSnap.exists()) {
-        alert("Paciente no encontrado");
-        return;
-      }
-      const paciente = pacienteSnap.data();
-
-      // Mostrar datos
-      document.getElementById("fichaApellido").textContent =
-        paciente.apellido || "-";
-      document.getElementById("fichaNombre").textContent =
-        paciente.nombre || "-";
-      document.getElementById("fichaDNI").textContent = paciente.dni || "-";
-      document.getElementById("fichaTelefono").textContent =
-        paciente.telefono || "-";
-      document.getElementById("fichaDireccion").textContent =
-        paciente.direccion || "-";
-      document.getElementById("fichaObraSocial").textContent =
-        paciente.obraSocial || "-";
-      document.getElementById("fichaGenero").textContent =
-        paciente.genero || "-";
-      document.getElementById("fichaFechaNacimiento").textContent =
-        paciente.fechaNacimiento || "-";
-      document.getElementById("fichaFechaIngreso").textContent =
-        paciente.fechaIngreso || "-";
-
-      // Vaciar listas
-      const ulTurnos = document.getElementById("fichaTurnos");
-      const ulPagos = document.getElementById("fichaPagos");
-      const ulNotas = document.getElementById("fichaNotas");
-      const ulArchivos = document.getElementById("fichaArchivos");
-      ulTurnos.innerHTML = "";
-      ulPagos.innerHTML = "";
-      ulNotas.innerHTML = "";
-      ulArchivos.innerHTML = "";
-
-      // Cargar turnos
-      const turnosSnap = await getDocs(collection(db, "turnos"));
-      turnosSnap.forEach((docu) => {
-        const turno = docu.data();
-        if (turno.pacienteId === pacienteId) {
-          const li = document.createElement("li");
-          li.classList.add("list-group-item");
-          li.textContent = `${turno.fecha} ${turno.hora} - ${
-            turno.tipoConsulta || "-"
-          } - Asistió: ${turno.asistio ? "Sí" : "No"} - Monto: $${
-            turno.montoAbonado?.toFixed(2) || "0.00"
-          }`;
-          ulTurnos.appendChild(li);
-        }
-      });
-
-      // Cargar pagos
-      const cajaSnap = await getDocs(collection(db, "caja"));
-      cajaSnap.forEach((docu) => {
-        const pago = docu.data();
-        if (pago.pacienteNombre === paciente.apellido + " " + paciente.nombre) {
-          const li = document.createElement("li");
-          li.classList.add("list-group-item");
-          li.textContent = `${pago.fecha} - $${pago.monto.toFixed(2)} - ${
-            pago.tipoConsulta || "-"
-          }`;
-          ulPagos.appendChild(li);
-        }
-      });
-
-      // Mostrar modal
-      const modalFicha = new bootstrap.Modal(
-        document.getElementById("modalFichaPaciente")
-      );
-      modalFicha.show();
+      // Abre ficha.html en pestaña nueva con el ID del paciente
+      window.open(`ficha.html?id=${pacienteId}`, "_blank");
     });
   });
 }
 
+// Función para mostrar la gestión de pacientes con IDs para ocultar/mostrar elementos
 function mostrarGestionPacientes() {
   mainContent.innerHTML = `
     <style>
@@ -679,12 +614,13 @@ function mostrarGestionPacientes() {
 
     <div class="row">
       <div class="col-lg-8">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div id="tituloPacientes" class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="mb-0">Mis Pacientes</h2>
-          <div class="d-flex gap-2">
-            <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
-            <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
-          </div>
+        </div>
+
+        <div id="contenedorBuscadorBtn" class="d-flex gap-2 mb-3">
+          <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
+          <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
         </div>
 
         <div class="collapse mb-4" id="formularioPaciente">
@@ -747,9 +683,16 @@ function mostrarGestionPacientes() {
           </thead>
           <tbody id="tablaPacientes"></tbody>
         </table>
+
+        <div id="paginacionPacientes" class="d-flex justify-content-center mb-3">
+          <!-- Aquí va la paginación dinámica si usás -->
+        </div>
+
+        <!-- CONTENEDOR PARA LA FICHA EXPANDIDA -->
+        <div id="contenedorFichaPaciente" style="display:none; margin-top: 1rem;"></div>
       </div>
 
-      <div class="col-lg-3">
+      <div id="estadisticasPacientes" class="col-lg-3">
         <div class="card mb-3">
           <div class="card-body">
             <h5 class="card-title">Pacientes totales</h5>
@@ -770,11 +713,13 @@ function mostrarGestionPacientes() {
     </div>
   `;
 
+  // Evento para mostrar/ocultar formulario paciente nuevo
   document.getElementById("btnNuevoPaciente").addEventListener("click", () => {
     const collapse = document.getElementById("formularioPaciente");
     collapse.classList.toggle("show");
   });
 
+  // Guardar paciente
   const formPaciente = document.getElementById("formPaciente");
   formPaciente.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -801,7 +746,8 @@ function mostrarGestionPacientes() {
       alert("Error al guardar paciente: " + error.message);
     }
   });
-  // Funcionalidad del buscador
+
+  // Buscador de pacientes
   const inputBuscador = document.getElementById("buscadorPacientes");
   inputBuscador.addEventListener("input", () => {
     const texto = inputBuscador.value.trim().toLowerCase();
@@ -1219,15 +1165,59 @@ function mostrarAgendaTurnos() {
       else if (estado === "ausente") dataUpdate.ausente = true;
 
       try {
+        // 1) Actualizar turno
         await updateDoc(doc(db, "turnos", id), dataUpdate);
 
-        alert("Turno actualizado.");
+        // 2) Buscar el turno actualizado para obtener pacienteId y nombre (necesario para caja)
+        const turnoDoc = await getDoc(doc(db, "turnos", id));
+        if (!turnoDoc.exists())
+          throw new Error("Turno no encontrado después de actualizar");
+
+        const turnoData = turnoDoc.data();
+
+        // 3) Buscar si ya existe un movimiento en caja vinculado a este turno
+        const cajaQuery = query(
+          collection(db, "caja"),
+          where("turnoId", "==", id)
+        );
+        const cajaSnapshot = await getDocs(cajaQuery);
+
+        if (cajaSnapshot.empty) {
+          // 4) No existe movimiento caja: crear uno nuevo
+          await addDoc(collection(db, "caja"), {
+            turnoId: id,
+            pacienteId: turnoData.pacienteId || "",
+            pacienteNombre: turnoData.pacienteNombre || "",
+            fecha,
+            hora,
+            monto,
+            tipo: "Ingreso",
+            detalle: `Pago turno ${fecha} ${hora}`,
+            fechaCreacion: new Date().toISOString(),
+          });
+        } else {
+          // 5) Existe movimiento caja: actualizarlo
+          const cajaDoc = cajaSnapshot.docs[0];
+          await updateDoc(doc(db, "caja", cajaDoc.id), {
+            fecha,
+            hora,
+            monto,
+            pacienteNombre: turnoData.pacienteNombre || "",
+            pacienteId: turnoData.pacienteId || "",
+            detalle: `Pago turno ${fecha} ${hora}`,
+          });
+        }
+
+        alert("Turno y caja actualizados correctamente.");
+
         bootstrap.Modal.getInstance(
           document.getElementById("modalEditarTurno")
         ).hide();
+
         cargarTurnosPaginados();
+        cargarCaja(); // <-- Recarga caja para actualizar valores en pantalla
       } catch (err) {
-        alert("Error al actualizar turno.");
+        alert("Error al actualizar turno y caja: " + err.message);
       }
     });
 

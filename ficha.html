@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ficha del Paciente</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <button id="btnVolver" class="btn btn-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Volver
+      </button>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Ficha del Paciente</h2>
+        <button id="btnRefrescarFicha" class="btn btn-outline-primary">
+          <i class="bi bi-arrow-clockwise"></i> Refrescar ficha
+        </button>
+      </div>
+
+      <hr />
+
+      <div id="infoPaciente" class="mb-4"></div>
+
+      <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link active"
+            id="datos-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#datos"
+            type="button"
+            role="tab"
+          >
+            Datos Personales
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="historia-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#historia"
+            type="button"
+            role="tab"
+          >
+            Historia Clínica
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="turnos-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#turnos"
+            type="button"
+            role="tab"
+          >
+            Turnos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="pagos-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#pagos"
+            type="button"
+            role="tab"
+          >
+            Pagos
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content mt-3" id="fichaTabsContent">
+        <div
+          class="tab-pane fade show active"
+          id="datos"
+          role="tabpanel"
+          tabindex="0"
+        >
+          <div id="datosPaciente"></div>
+        </div>
+
+        <div class="tab-pane fade" id="historia" role="tabpanel" tabindex="0">
+          <div class="mb-3">
+            <label for="selectTurnoParaNota" class="form-label">Turno:</label>
+            <select id="selectTurnoParaNota" class="form-select"></select>
+          </div>
+          <div class="mb-3">
+            <label for="inputTextoNota" class="form-label">Nota Clínica:</label>
+            <textarea
+              id="inputTextoNota"
+              class="form-control"
+              rows="4"
+            ></textarea>
+          </div>
+          <button id="btnAgregarNota" class="btn btn-primary mb-4">
+            Guardar Nota
+          </button>
+          <h5>Notas anteriores</h5>
+          <ul id="listaNotasClinicas" class="list-group"></ul>
+        </div>
+
+        <div class="tab-pane fade" id="turnos" role="tabpanel" tabindex="0">
+          <ul id="listaTurnosPaciente" class="list-group"></ul>
+        </div>
+
+        <div class="tab-pane fade" id="pagos" role="tabpanel" tabindex="0">
+          <ul id="listaPagosPaciente" class="list-group"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+      import {
+        getFirestore,
+        doc,
+        getDoc,
+        getDocs,
+        query,
+        collection,
+        addDoc,
+        orderBy,
+      } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAQwEe9C-ruCZ6TX612zA6FhkxZUJ2rVoc",
+        authDomain: "consultoriosapp-f7f08.firebaseapp.com",
+        projectId: "consultoriosapp-f7f08",
+        storageBucket: "consultoriosapp-f7f08.appspot.com",
+        messagingSenderId: "729983357456",
+        appId: "1:729983357456:web:61f5805927509dfeefb095",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const idPacienteGlobal = new URLSearchParams(location.search).get("id");
+      if (!idPacienteGlobal) {
+        alert("No se especificó paciente");
+        throw new Error("No se especificó paciente");
+      }
+
+      let apellidoPaciente = "",
+        nombrePaciente = "";
+
+      async function cargarDatosPaciente() {
+        const docRef = doc(db, "pacientes", idPacienteGlobal);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          alert("Paciente no encontrado");
+          return;
+        }
+        const paciente = docSnap.data();
+
+        apellidoPaciente = paciente.apellido?.toLowerCase().trim() || "";
+        nombrePaciente = paciente.nombre?.toLowerCase().trim() || "";
+
+        document.getElementById("datosPaciente").innerHTML = `
+          <p><strong>Apellido:</strong> ${paciente.apellido || "-"}</p>
+          <p><strong>Nombre:</strong> ${paciente.nombre || "-"}</p>
+          <p><strong>DNI:</strong> ${paciente.dni || "-"}</p>
+          <p><strong>Teléfono:</strong> ${paciente.telefono || "-"}</p>
+          <p><strong>Dirección:</strong> ${paciente.direccion || "-"}</p>
+          <p><strong>Género:</strong> ${paciente.genero || "-"}</p>
+          <p><strong>Obra Social:</strong> ${paciente.obraSocial || "-"}</p>
+          <p><strong>Fecha Nac.:</strong> ${paciente.fechaNacimiento || "-"}</p>
+          <p><strong>Ingreso:</strong> ${paciente.fechaIngreso || "-"}</p>
+        `;
+      }
+
+      async function cargarTurnosParaSelect() {
+        const q = query(collection(db, "turnos"), orderBy("fecha", "desc"));
+        const snapshot = await getDocs(q);
+        const select = document.getElementById("selectTurnoParaNota");
+        select.innerHTML = "";
+
+        const turnosPaciente = [];
+        snapshot.forEach((docu) => {
+          const turno = docu.data();
+          if (String(turno.pacienteId) === idPacienteGlobal) {
+            turnosPaciente.push({ id: docu.id, ...turno });
+          }
+        });
+
+        if (turnosPaciente.length === 0) {
+          const option = document.createElement("option");
+          option.textContent = "No hay turnos disponibles";
+          option.disabled = true;
+          option.value = "";
+          select.appendChild(option);
+          return;
+        }
+
+        turnosPaciente.forEach((turno) => {
+          const option = document.createElement("option");
+          option.value = turno.id;
+          option.textContent = `${turno.fecha} ${turno.hora} - ${
+            turno.tipoConsulta || "-"
+          }`;
+          select.appendChild(option);
+        });
+      }
+
+      async function cargarNotas() {
+        const q = query(
+          collection(db, "notasClinicas"),
+          orderBy("fechaCreacion", "desc")
+        );
+        const snapshot = await getDocs(q);
+        const lista = document.getElementById("listaNotasClinicas");
+        lista.innerHTML = "";
+
+        const notasPaciente = [];
+        snapshot.forEach((docu) => {
+          const nota = docu.data();
+          if (nota.idPaciente === idPacienteGlobal) {
+            notasPaciente.push(nota);
+          }
+        });
+
+        if (notasPaciente.length === 0) {
+          lista.innerHTML =
+            "<li class='list-group-item'>No hay notas clínicas registradas.</li>";
+          return;
+        }
+
+        notasPaciente.forEach((nota) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+          li.innerHTML = `<strong>${nota.fechaTurno} ${nota.horaTurno}</strong><br>${nota.notaTexto}`;
+          lista.appendChild(li);
+        });
+      }
+
+      async function agregarNota(idTurno, notaTexto) {
+        const turnoDoc = await getDoc(doc(db, "turnos", idTurno));
+        if (!turnoDoc.exists()) {
+          alert("Turno no encontrado");
+          return;
+        }
+        const turno = turnoDoc.data();
+
+        await addDoc(collection(db, "notasClinicas"), {
+          idPaciente: idPacienteGlobal,
+          idTurno,
+          fechaTurno: turno.fecha,
+          horaTurno: turno.hora,
+          notaTexto,
+          fechaCreacion: new Date().toISOString(),
+          doctor: "Dr. Pérez",
+        });
+      }
+
+      async function cargarTurnos() {
+        const lista = document.getElementById("listaTurnosPaciente");
+        lista.innerHTML = "";
+
+        try {
+          const q = query(collection(db, "turnos"), orderBy("fecha", "desc"));
+          const snapshot = await getDocs(q);
+
+          const turnosPaciente = [];
+
+          snapshot.forEach((docu) => {
+            const turno = docu.data();
+            if (String(turno.pacienteId) === idPacienteGlobal) {
+              turnosPaciente.push(turno);
+            }
+          });
+
+          if (turnosPaciente.length === 0) {
+            lista.innerHTML =
+              "<li class='list-group-item'>No hay turnos registrados.</li>";
+            return;
+          }
+
+          turnosPaciente.forEach((turno) => {
+            const {
+              fecha = "-",
+              hora = "-",
+              tipoConsulta = "-",
+              estado = "Sin estado",
+              asistio,
+              montoAbonado = 0,
+            } = turno;
+
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerHTML = `
+        <strong>${fecha} ${hora}</strong> - ${tipoConsulta}<br>
+        Estado: ${estado}<br>
+        Asistió: ${asistio ? "Sí" : "No"}<br>
+        Monto abonado: $${montoAbonado.toFixed(2)}
+      `;
+            lista.appendChild(li);
+          });
+        } catch (error) {
+          lista.innerHTML = `<li class='list-group-item text-danger'>Error al cargar turnos.</li>`;
+          console.error("Error al cargar turnos:", error);
+        }
+      }
+
+      async function cargarPagos() {
+        const snapshot = await getDocs(collection(db, "caja"));
+        const lista = document.getElementById("listaPagosPaciente");
+        lista.innerHTML = "";
+
+        const nombreCompleto = `${apellidoPaciente} ${nombrePaciente}`.trim();
+        const pagos = [];
+
+        snapshot.forEach((docu) => {
+          const pago = docu.data();
+          if (
+            pago.pacienteNombre?.toLowerCase().trim() ===
+            nombreCompleto.toLowerCase()
+          ) {
+            pagos.push(pago);
+          }
+        });
+
+        if (pagos.length === 0) {
+          lista.innerHTML =
+            "<li class='list-group-item'>No hay pagos registrados.</li>";
+          return;
+        }
+
+        pagos.forEach((p) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+          li.innerHTML = `<strong>${p.fecha}</strong> - $${p.monto.toFixed(
+            2
+          )}<br>${p.tipoConsulta || "-"}`;
+          lista.appendChild(li);
+        });
+      }
+
+      document
+        .getElementById("btnVolver")
+        .addEventListener("click", () => window.close());
+
+      (async () => {
+        await cargarDatosPaciente();
+        await Promise.all([
+          cargarTurnosParaSelect(),
+          cargarTurnos(),
+          cargarNotas(),
+          cargarPagos(),
+        ]);
+      })();
+
+      // Evento para botón guardar nota
+      document
+        .getElementById("btnAgregarNota")
+        .addEventListener("click", async () => {
+          const idTurno = document.getElementById("selectTurnoParaNota").value;
+          const texto = document.getElementById("inputTextoNota").value.trim();
+          if (!idTurno || !texto) {
+            alert("Seleccioná un turno y escribí la nota.");
+            return;
+          }
+          await agregarNota(idTurno, texto);
+          await cargarNotas();
+          document.getElementById("inputTextoNota").value = "";
+          alert("Nota guardada.");
+        });
+      async function refrescarFicha() {
+        await cargarDatosPaciente();
+        await Promise.all([
+          cargarTurnosParaSelect(),
+          cargarTurnos(),
+          cargarNotas(),
+          cargarPagos(),
+        ]);
+      }
+
+      // Evento botón refrescar
+      document
+        .getElementById("btnRefrescarFicha")
+        .addEventListener("click", async () => {
+          await refrescarFicha();
+          alert("Ficha actualizada");
+        });
+    </script>
+  </body>
+</html>
