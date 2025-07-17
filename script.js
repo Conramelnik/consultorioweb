@@ -46,7 +46,8 @@ const turnosPorPagina = 20;
 let turnosFiltrados = [];
 
 let pacientesGlobalFiltrados = []; // pacientes filtrados
-
+// Variable global para controlar si estamos editando un paciente
+let pacienteEditandoId = null;
 let calendar;
 
 async function mostrarInicio() {
@@ -478,25 +479,247 @@ function mostrarPagina(pagina) {
   pacientesPagina.forEach((p) => {
     const fila = document.createElement("tr");
     fila.innerHTML = `
-    <td>${p.apellido}</td>
-    <td>${p.nombre}</td>
-    <td>${p.dni}</td>
-    <td>${p.telefono || "-"}</td>
-    <td class="text-end">
-      <button class="btn btn-sm btn-secondary ver-ficha" data-id="${
-        p.id
-      }">Ver ficha</button>
-    </td>
-  `;
+      <td>${p.apellido}</td>
+      <td>${p.nombre}</td>
+      <td>${p.dni}</td>
+      <td>${p.telefono || "-"}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-secondary ver-ficha me-2" data-id="${p.id}">Ver ficha</button>
+       <button class="btn btn-sm btn-primary editar-paciente" data-id="${p.id}" title="Editar">
+  <i class="bi bi-pencil"></i>
+</button>
+<button class="btn btn-sm btn-danger eliminar-paciente" data-id="${p.id}" title="Eliminar">
+  <i class="bi bi-trash"></i>
+</button>
+
+      </td>
+    `;
     tablaPacientes.appendChild(fila);
   });
 
   // Botones "Ver ficha"
   agregarEventosVerFicha();
 
+  // Agregar eventos para los botones "Editar" y "Eliminar"
+  agregarEventosEditarPaciente();
+  agregarEventosEliminarPaciente();
+
   // Actualizar controles de paginación
   mostrarControlesPaginacion(totalPaginas);
 }
+// Evento para botón Editar
+function agregarEventosEditarPaciente() {
+  const botonesEditar = document.querySelectorAll(".editar-paciente");
+
+  botonesEditar.forEach((boton) => {
+    boton.addEventListener("click", async () => {
+      const id = boton.getAttribute("data-id");
+
+      try {
+        const docRef = doc(db, "pacientes", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const paciente = docSnap.data();
+          abrirModalPaciente(id, paciente); // Abre el modal con los datos
+        } else {
+          console.error("No se encontró el paciente con ID:", id);
+        }
+      } catch (error) {
+        console.error("Error al obtener paciente:", error);
+      }
+    });
+  });
+}
+
+// Evento para botón Eliminar
+function agregarEventosEliminarPaciente() {
+  document.querySelectorAll(".eliminar-paciente").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = e.target.dataset.id;
+      if (!id) return;
+
+      if (confirm("¿Estás seguro que quieres eliminar este paciente?")) {
+        try {
+          await deleteDoc(doc(db, "pacientes", id));
+          alert("Paciente eliminado");
+          cargarPacientes(); // recargar la tabla
+        } catch (error) {
+          alert("Error al eliminar paciente: " + error.message);
+        }
+      }
+    });
+  });
+}
+
+// Referencia al modal y formulario del modal (estos IDs son los que pusiste en el modal)
+// Referencia al modal y formulario del modal (estos IDs son los que pusiste en el modal)
+const modalPacienteEl = document.getElementById("modalPaciente");
+const modalPaciente = new bootstrap.Modal(modalPacienteEl);
+const formModalPaciente = document.getElementById("formModalPaciente");
+
+// Función para abrir modal y cargar datos si es edición o nuevo paciente
+function abrirModalPaciente(id = null, paciente = null) {
+  pacienteEditandoId = id; // null = nuevo paciente, id para editar
+
+  // Cambiar título del modal según acción
+  const tituloModal = modalPacienteEl.querySelector(".modal-title");
+  tituloModal.textContent = id ? "Editar Paciente" : "Nuevo Paciente";
+
+  // Cargar datos en inputs o limpiar formulario
+  document.getElementById("modalApellido").value = paciente?.apellido || "";
+  document.getElementById("modalNombre").value = paciente?.nombre || "";
+  document.getElementById("modalDNI").value = paciente?.dni || "";
+  document.getElementById("modalTelefono").value = paciente?.telefono || "";
+  document.getElementById("modalDireccion").value = paciente?.direccion || "";
+  document.getElementById("modalObraSocial").value = paciente?.obraSocial || "";
+  document.getElementById("modalGenero").value = paciente?.genero || "";
+  document.getElementById("modalFechaNacimiento").value = paciente?.fechaNacimiento || "";
+
+  // Quitar validaciones previas si existían
+  formModalPaciente.classList.remove("was-validated");
+
+  // Abrir modal
+  modalPaciente.show();
+}
+
+// Listener para el submit del formulario del modal para crear o editar paciente
+// Función auxiliar para marcar error y mostrar mensaje en un input
+function marcarError(inputEl, mensaje) {
+  inputEl.classList.add("is-invalid");
+  let feedback = inputEl.nextElementSibling;
+  if (feedback && feedback.classList.contains("invalid-feedback")) {
+    feedback.textContent = mensaje;
+  }
+}
+
+// Limpiar errores previos
+function limpiarErrores(form) {
+  form.querySelectorAll(".is-invalid").forEach((el) => {
+    el.classList.remove("is-invalid");
+  });
+}
+
+// Listener para el submit del formulario del modal para crear o editar paciente
+formModalPaciente.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  limpiarErrores(formModalPaciente);
+
+  // Campos
+  const apellidoEl = document.getElementById("modalApellido");
+  const nombreEl = document.getElementById("modalNombre");
+  const dniEl = document.getElementById("modalDNI");
+  const telefonoEl = document.getElementById("modalTelefono");
+  const direccionEl = document.getElementById("modalDireccion");
+
+  const apellido = apellidoEl.value.trim();
+  const nombre = nombreEl.value.trim();
+  const dni = dniEl.value.trim();
+  const telefono = telefonoEl.value.trim();
+  const direccion = direccionEl.value.trim();
+
+  let valido = true;
+
+  // Validaciones
+
+  // Apellido obligatorio, solo letras y espacios, max 30
+  if (!apellido) {
+    marcarError(apellidoEl, "Apellido es obligatorio.");
+    valido = false;
+  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]{1,30}$/.test(apellido)) {
+    marcarError(apellidoEl, "Apellido solo letras y máximo 30 caracteres.");
+    valido = false;
+  }
+
+  // Nombre obligatorio, solo letras y espacios, max 30
+  if (!nombre) {
+    marcarError(nombreEl, "Nombre es obligatorio.");
+    valido = false;
+  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]{1,30}$/.test(nombre)) {
+    marcarError(nombreEl, "Nombre solo letras y máximo 30 caracteres.");
+    valido = false;
+  }
+
+  // DNI obligatorio, solo números, max 15 (por si hay guiones o espacios)
+  if (!dni) {
+    marcarError(dniEl, "DNI es obligatorio.");
+    valido = false;
+  } else if (!/^\d{1,15}$/.test(dni)) {
+    marcarError(dniEl, "DNI solo números, hasta 15 dígitos.");
+    valido = false;
+  }
+
+  // Teléfono opcional, si hay debe ser solo números, max 20
+  if (telefono && !/^\d{1,20}$/.test(telefono)) {
+    marcarError(telefonoEl, "Teléfono solo números, máximo 20 dígitos.");
+    valido = false;
+  }
+
+  // Dirección opcional, max 40 caracteres
+  if (direccion.length > 40) {
+    marcarError(direccionEl, "Dirección máximo 40 caracteres.");
+    valido = false;
+  }
+
+  if (!valido) {
+    return; // Si falla alguna validación no continua
+  }
+
+  // Verificar que no exista otro paciente con el mismo DNI (excepto el que editamos)
+  try {
+    const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
+    let dniRepetido = false;
+    pacientesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (
+        data.dni === dni &&
+        doc.id !== pacienteEditandoId // No comparar con el mismo paciente que editamos
+      ) {
+        dniRepetido = true;
+      }
+    });
+    if (dniRepetido) {
+      marcarError(dniEl, "Ya existe un paciente con ese DNI.");
+      return;
+    }
+  } catch (error) {
+    alert("Error verificando DNI: " + error.message);
+    return;
+  }
+
+  // Si todo OK crear objeto paciente y guardar en Firestore
+  const paciente = {
+    apellido,
+    nombre,
+    dni,
+    telefono,
+    direccion,
+    obraSocial: document.getElementById("modalObraSocial").value.trim(),
+    genero: document.getElementById("modalGenero").value,
+    fechaNacimiento: document.getElementById("modalFechaNacimiento").value,
+  };
+
+  try {
+    if (pacienteEditandoId) {
+      await updateDoc(doc(db, "pacientes", pacienteEditandoId), paciente);
+      alert("Paciente actualizado correctamente");
+    } else {
+      paciente.fechaIngreso = new Date().toISOString().slice(0, 10);
+      await addDoc(collection(db, "pacientes"), paciente);
+      alert("Paciente guardado correctamente");
+    }
+
+    formModalPaciente.reset();
+    formModalPaciente.classList.remove("was-validated");
+    modalPaciente.hide();
+    pacienteEditandoId = null;
+    cargarPacientes();
+  } catch (error) {
+    alert("Error al guardar paciente: " + error.message);
+  }
+});
+
+
+// Función para actualizar estadísticas de pacientes
 function actualizarEstadisticasPacientes(pacientes) {
   document.getElementById("estadisticaTotal").textContent = pacientes.length;
   const masculino = pacientes.filter((p) => p.genero === "Masculino").length;
@@ -577,13 +800,6 @@ function mostrarGestionPacientes() {
         padding: 12px 15px;
         vertical-align: middle;
       }
-      #formPaciente .form-control {
-        padding: 8px 10px;
-      }
-      #formPaciente .col-md-4,
-      #formPaciente .col-md-6 {
-        margin-bottom: 15px;
-      }
       #buscadorPacientes {
         max-width: 300px;
       }
@@ -599,9 +815,6 @@ function mostrarGestionPacientes() {
         column-gap: 30px;
       }
       /* Ajuste ancho columnas */
-      .col-lg-8 {
-        /* Mantener igual, nada que cambiar */
-      }
       .col-lg-3 {
         max-width: 220px; /* Más angosta que el 4 normal */
         flex: 0 0 220px;
@@ -623,54 +836,6 @@ function mostrarGestionPacientes() {
           <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
         </div>
 
-        <div class="collapse mb-4" id="formularioPaciente">
-          <form id="formPaciente" class="row g-3">
-            <div class="col-md-4">
-              <label for="apellido" class="form-label">Apellido *</label>
-              <input type="text" class="form-control" id="apellido" required />
-            </div>
-            <div class="col-md-4">
-              <label for="nombre" class="form-label">Nombre *</label>
-              <input type="text" class="form-control" id="nombre" required />
-            </div>
-            <div class="col-md-4">
-              <label for="dni" class="form-label">DNI *</label>
-              <input type="text" class="form-control" id="dni" required />
-            </div>
-
-            <div class="col-md-4">
-              <label for="fechaNacimiento" class="form-label">Fecha de Nacimiento</label>
-              <input type="date" class="form-control" id="fechaNacimiento" />
-            </div>
-            <div class="col-md-4">
-              <label for="telefono" class="form-label">Teléfono *</label>
-              <input type="tel" class="form-control" id="telefono" required />
-            </div>
-            <div class="col-md-4">
-              <label for="direccion" class="form-label">Dirección</label>
-              <input type="text" class="form-control" id="direccion" />
-            </div>
-
-            <div class="col-md-6">
-              <label for="genero" class="form-label">Género</label>
-              <select class="form-select" id="genero">
-                <option value="" selected>Seleccionar</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Femenino">Femenino</option>
-                <option value="Otro">Otro</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label for="obraSocial" class="form-label">Obra Social</label>
-              <input type="text" class="form-control" id="obraSocial" />
-            </div>
-
-            <div class="col-12">
-              <button type="submit" class="btn btn-success">Guardar Paciente</button>
-            </div>
-          </form>
-        </div>
-
         <table class="table table-striped">
           <thead>
             <tr>
@@ -685,7 +850,7 @@ function mostrarGestionPacientes() {
         </table>
 
         <div id="paginacionPacientes" class="d-flex justify-content-center mb-3">
-          <!-- Aquí va la paginación dinámica si usás -->
+          <!-- Aquí va la paginación dinámica -->
         </div>
 
         <!-- CONTENEDOR PARA LA FICHA EXPANDIDA -->
@@ -713,38 +878,9 @@ function mostrarGestionPacientes() {
     </div>
   `;
 
-  // Evento para mostrar/ocultar formulario paciente nuevo
+  // Evento para abrir modal de nuevo paciente
   document.getElementById("btnNuevoPaciente").addEventListener("click", () => {
-    const collapse = document.getElementById("formularioPaciente");
-    collapse.classList.toggle("show");
-  });
-
-  // Guardar paciente
-  const formPaciente = document.getElementById("formPaciente");
-  formPaciente.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const paciente = {
-      apellido: document.getElementById("apellido").value.trim(),
-      nombre: document.getElementById("nombre").value.trim(),
-      dni: document.getElementById("dni").value.trim(),
-      telefono: document.getElementById("telefono").value.trim(),
-      direccion: document.getElementById("direccion").value.trim(),
-      obraSocial: document.getElementById("obraSocial").value.trim(),
-      genero: document.getElementById("genero").value,
-      fechaNacimiento: document.getElementById("fechaNacimiento").value,
-      fechaIngreso: new Date().toISOString().slice(0, 10),
-    };
-
-    try {
-      await addDoc(collection(db, "pacientes"), paciente);
-      alert("Paciente guardado correctamente");
-      formPaciente.reset();
-      document.getElementById("formularioPaciente").classList.remove("show");
-      paginaActual = 1;
-      cargarPacientes();
-    } catch (error) {
-      alert("Error al guardar paciente: " + error.message);
-    }
+    abrirModalPaciente(); // Abre el modal con formulario vacío para nuevo paciente
   });
 
   // Buscador de pacientes
@@ -773,6 +909,33 @@ function mostrarGestionPacientes() {
   });
 
   cargarPacientes();
+}
+
+function mostrarFormularioEdicion(id, paciente) {
+  pacienteEditandoId = id;
+
+  // Cargar datos en inputs del modal
+  document.getElementById("modalApellido").value = paciente.apellido || "";
+  document.getElementById("modalNombre").value = paciente.nombre || "";
+  document.getElementById("modalDni").value = paciente.dni || "";
+  document.getElementById("modalTelefono").value = paciente.telefono || "";
+  document.getElementById("modalDireccion").value = paciente.direccion || "";
+  document.getElementById("modalObraSocial").value = paciente.obraSocial || "";
+  document.getElementById("modalGenero").value = paciente.genero || "";
+  document.getElementById("modalFechaNacimiento").value =
+    paciente.fechaNacimiento || "";
+
+  // Cambiar el texto del botón
+  document.getElementById("btnGuardarPaciente").textContent = "Guardar Cambios";
+
+  // Abrir el modal
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalFormularioPaciente")
+  );
+  modal.show();
+
+  // Enfocar el primer campo
+  document.getElementById("modalApellido").focus();
 }
 
 // --- GESTIÓN TURNOS ---

@@ -395,6 +395,142 @@
         </form>
       </div>
     </div>
+    <!-- Modal para crear/editar paciente -->
+    <div
+      class="modal fade"
+      id="modalPaciente"
+      tabindex="-1"
+      aria-labelledby="modalPacienteLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="formModalPaciente" class="needs-validation" novalidate>
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalPacienteLabel">
+                Editar Paciente
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Cerrar"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <!-- Campos del formulario -->
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label for="modalApellido" class="form-label"
+                    >Apellido *</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="modalApellido"
+                    required
+                    maxlength="30"
+                  />
+                  <div class="invalid-feedback">Apellido es obligatorio.</div>
+                </div>
+                <div class="col-md-4">
+                  <label for="modalNombre" class="form-label">Nombre *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="modalNombre"
+                    required
+                    maxlength="30"
+                  />
+                  <div class="invalid-feedback">Nombre es obligatorio.</div>
+                </div>
+                <div class="col-md-4">
+                  <label for="modalDNI" class="form-label">DNI *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="modalDNI"
+                    required
+                    maxlength="9"
+                    pattern="\d+"
+                    title="Solo números"
+                  />
+                  <div class="invalid-feedback">
+                    DNI es obligatorio y solo números.
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <label for="modalTelefono" class="form-label">Teléfono</label>
+                  <input
+                    type="tel"
+                    class="form-control"
+                    id="modalTelefono"
+                    maxlength="15"
+                    pattern="\d*"
+                    title="Solo números"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label for="modalDireccion" class="form-label"
+                    >Dirección</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="modalDireccion"
+                    maxlength="40"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label for="modalObraSocial" class="form-label"
+                    >Obra Social</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="modalObraSocial"
+                    maxlength="40"
+                  />
+                </div>
+
+                <div class="col-md-4">
+                  <label for="modalGenero" class="form-label">Género</label>
+                  <select class="form-select" id="modalGenero">
+                    <option value="" selected>Seleccionar</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="modalFechaNacimiento" class="form-label">
+                    Fecha de Nacimiento
+                  </label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="modalFechaNacimiento"
+                  />
+                </div>
+                <div class="col-md-4"></div>
+                <!-- Col vacía para alinear botones -->
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <!-- Tu script principal -->
     <script type="module" src="script.js"></script>
