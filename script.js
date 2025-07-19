@@ -484,11 +484,17 @@ function mostrarPagina(pagina) {
       <td>${p.dni}</td>
       <td>${p.telefono || "-"}</td>
       <td class="text-end">
-        <button class="btn btn-sm btn-secondary ver-ficha me-2" data-id="${p.id}">Ver ficha</button>
-       <button class="btn btn-sm btn-primary editar-paciente" data-id="${p.id}" title="Editar">
+        <button class="btn btn-sm btn-secondary ver-ficha me-2" data-id="${
+          p.id
+        }">Ver ficha</button>
+       <button class="btn btn-sm btn-primary editar-paciente" data-id="${
+         p.id
+       }" title="Editar">
   <i class="bi bi-pencil"></i>
 </button>
-<button class="btn btn-sm btn-danger eliminar-paciente" data-id="${p.id}" title="Eliminar">
+<button class="btn btn-sm btn-danger eliminar-paciente" data-id="${
+      p.id
+    }" title="Eliminar">
   <i class="bi bi-trash"></i>
 </button>
 
@@ -573,7 +579,8 @@ function abrirModalPaciente(id = null, paciente = null) {
   document.getElementById("modalDireccion").value = paciente?.direccion || "";
   document.getElementById("modalObraSocial").value = paciente?.obraSocial || "";
   document.getElementById("modalGenero").value = paciente?.genero || "";
-  document.getElementById("modalFechaNacimiento").value = paciente?.fechaNacimiento || "";
+  document.getElementById("modalFechaNacimiento").value =
+    paciente?.fechaNacimiento || "";
 
   // Quitar validaciones previas si existían
   formModalPaciente.classList.remove("was-validated");
@@ -718,7 +725,6 @@ formModalPaciente.addEventListener("submit", async (e) => {
   }
 });
 
-
 // Función para actualizar estadísticas de pacientes
 function actualizarEstadisticasPacientes(pacientes) {
   document.getElementById("estadisticaTotal").textContent = pacientes.length;
@@ -791,7 +797,6 @@ function agregarEventosVerFicha() {
 function mostrarGestionPacientes() {
   mainContent.innerHTML = `
     <style>
-      /* Estilos generales */
       table.table tbody tr {
         height: 50px;
       }
@@ -810,18 +815,31 @@ function mostrarGestionPacientes() {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-size: 14px;
       }
-      /* Espacio horizontal entre columnas */
       .row {
         column-gap: 30px;
       }
-      /* Ajuste ancho columnas */
       .col-lg-3 {
-        max-width: 220px; /* Más angosta que el 4 normal */
+        max-width: 220px;
         flex: 0 0 220px;
       }
-      /* Alineación botón ver ficha */
       .text-end {
         text-align: right !important;
+      }
+
+      /* Filtro con botón */
+      #filtroPacientesNuevosContainer {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+      #filtroPacientesNuevosFechas label {
+        margin-right: 5px;
+      }
+      #filtroPacientesNuevosFechas input {
+        margin-right: 15px;
+        max-width: 140px;
       }
     </style>
 
@@ -834,6 +852,16 @@ function mostrarGestionPacientes() {
         <div id="contenedorBuscadorBtn" class="d-flex gap-2 mb-3">
           <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
           <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
+        </div>
+
+        <div id="filtroPacientesNuevosContainer">
+          <button class="btn btn-outline-secondary" id="btnFiltrarNuevos">Ver pacientes nuevos</button>
+          <div id="filtroPacientesNuevosFechas">
+            <label for="fechaDesde">Desde:</label>
+            <input type="date" id="fechaDesde" />
+            <label for="fechaHasta">Hasta:</label>
+            <input type="date" id="fechaHasta" />
+          </div>
         </div>
 
         <table class="table table-striped">
@@ -849,11 +877,7 @@ function mostrarGestionPacientes() {
           <tbody id="tablaPacientes"></tbody>
         </table>
 
-        <div id="paginacionPacientes" class="d-flex justify-content-center mb-3">
-          <!-- Aquí va la paginación dinámica -->
-        </div>
-
-        <!-- CONTENEDOR PARA LA FICHA EXPANDIDA -->
+        <div id="paginacionPacientes" class="d-flex justify-content-center mb-3"></div>
         <div id="contenedorFichaPaciente" style="display:none; margin-top: 1rem;"></div>
       </div>
 
@@ -878,35 +902,83 @@ function mostrarGestionPacientes() {
     </div>
   `;
 
-  // Evento para abrir modal de nuevo paciente
-  document.getElementById("btnNuevoPaciente").addEventListener("click", () => {
-    abrirModalPaciente(); // Abre el modal con formulario vacío para nuevo paciente
+  // Variables y elementos
+  const inputBuscador = document.getElementById("buscadorPacientes");
+  const btnNuevoPaciente = document.getElementById("btnNuevoPaciente");
+  const btnFiltrarNuevos = document.getElementById("btnFiltrarNuevos");
+  const fechaDesde = document.getElementById("fechaDesde");
+  const fechaHasta = document.getElementById("fechaHasta");
+
+  let filtroNuevosActivo = false;
+
+  btnNuevoPaciente.addEventListener("click", () => {
+    abrirModalPaciente();
   });
 
-  // Buscador de pacientes
-  const inputBuscador = document.getElementById("buscadorPacientes");
   inputBuscador.addEventListener("input", () => {
-    const texto = inputBuscador.value.trim().toLowerCase();
+    filtrarPacientes();
+  });
 
-    if (texto === "") {
-      pacientesGlobalFiltrados = pacientesGlobal;
-    } else {
-      pacientesGlobalFiltrados = pacientesGlobal.filter((p) => {
-        const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
-        const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
-        const dni = p.dni?.toString().toLowerCase() || "";
+  fechaDesde.addEventListener("change", () => {
+    if (filtroNuevosActivo) filtrarPacientes();
+  });
 
-        return (
-          nombreCompleto.includes(texto) ||
-          nombreInvertido.includes(texto) ||
-          dni.includes(texto)
-        );
-      });
+  fechaHasta.addEventListener("change", () => {
+    if (filtroNuevosActivo) filtrarPacientes();
+  });
+
+  btnFiltrarNuevos.addEventListener("click", () => {
+    filtroNuevosActivo = !filtroNuevosActivo;
+
+    // Toggle estilo botón
+    btnFiltrarNuevos.classList.toggle(
+      "btn-outline-secondary",
+      !filtroNuevosActivo
+    );
+    btnFiltrarNuevos.classList.toggle("btn-secondary", filtroNuevosActivo);
+
+    // Si se activa, setea fechas al mes actual
+    if (filtroNuevosActivo) {
+      const hoy = new Date();
+      const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+      fechaDesde.value = primerDia.toISOString().split("T")[0];
+      fechaHasta.value = ultimoDia.toISOString().split("T")[0];
     }
+
+    filtrarPacientes();
+  });
+
+  function filtrarPacientes() {
+    const texto = inputBuscador.value.trim().toLowerCase();
+    const desdeVal = fechaDesde.value;
+    const hastaVal = fechaHasta.value;
+
+    pacientesGlobalFiltrados = pacientesGlobal.filter((p) => {
+      const nombreCompleto = (p.nombre + " " + p.apellido).toLowerCase();
+      const nombreInvertido = (p.apellido + " " + p.nombre).toLowerCase();
+      const dni = p.dni?.toString().toLowerCase() || "";
+
+      const coincideTexto =
+        nombreCompleto.includes(texto) ||
+        nombreInvertido.includes(texto) ||
+        dni.includes(texto);
+
+      if (!coincideTexto) return false;
+
+      if (filtroNuevosActivo) {
+        const fechaIngreso = p.fechaIngreso || "";
+        if (!fechaIngreso) return false;
+        if (desdeVal && fechaIngreso < desdeVal) return false;
+        if (hastaVal && fechaIngreso > hastaVal) return false;
+      }
+
+      return true;
+    });
 
     paginaActual = 1;
     mostrarPagina(paginaActual);
-  });
+  }
 
   cargarPacientes();
 }
@@ -954,7 +1026,8 @@ async function cargarPacientesSelect() {
   });
 }
 
-async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
+// Función para cargar y mostrar los turnos filtrados y paginados
+async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana = "") {
   const tablaTurnos = document.getElementById("tablaTurnos");
   const paginacion = document.getElementById("paginacionTurnos");
   if (!tablaTurnos || !paginacion) return;
@@ -962,25 +1035,89 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
   tablaTurnos.innerHTML = "";
   paginacion.innerHTML = "";
 
+  const busqueda = document.getElementById("inputBusquedaPaciente").value.trim().toLowerCase();
+  const fechaDesde = document.getElementById("inputFechaDesde").value;
+  const fechaHasta = document.getElementById("inputFechaHasta").value;
+  const estado = document.getElementById("selectEstado").value;
+  const pago = document.getElementById("selectPago").value;
+
+  const formatDate = (date) => date.toISOString().split("T")[0];
+
   try {
-    const turnosSnapshot = await getDocs(collection(db, "turnos"));
-    const turnos = [];
-    const hoyFecha = new Date();
-    turnosSnapshot.forEach((doc) => {
-      const t = doc.data();
-      const turnoFecha = new Date(`${t.fecha}T${t.hora}`);
-      if (turnoFecha >= hoyFecha || t.fecha === hoy()) {
-        turnos.push({ id: doc.id, ...t });
+    const snapshot = await getDocs(collection(db, "turnos"));
+    let turnos = [];
+
+    snapshot.forEach((doc) => {
+      const t = { id: doc.id, ...doc.data() };
+      const pacienteLower = t.pacienteNombre.toLowerCase();
+
+      if (busqueda !== "") {
+        if (pacienteLower.includes(busqueda)) {
+          turnos.push(t);
+        }
+      } else {
+        let cumpleFecha = true;
+        if (filtroDiaSemana === "hoy") {
+          const hoy = formatDate(new Date());
+          cumpleFecha = t.fecha === hoy;
+        } else if (filtroDiaSemana === "semana") {
+          const hoy = new Date();
+          const dia = hoy.getDay();
+          const lunes = new Date(hoy);
+          lunes.setDate(hoy.getDate() - (dia === 0 ? 6 : dia - 1));
+          const sabado = new Date(lunes);
+          sabado.setDate(lunes.getDate() + 5);
+          cumpleFecha = t.fecha >= formatDate(lunes) && t.fecha <= formatDate(sabado);
+        } else {
+          if (fechaDesde && t.fecha < fechaDesde) cumpleFecha = false;
+          if (fechaHasta && t.fecha > fechaHasta) cumpleFecha = false;
+        }
+
+        let cumpleEstado = true;
+        switch (estado) {
+          case "asistio":
+            cumpleEstado = t.asistio === true;
+            break;
+          case "cancelado":
+            cumpleEstado = t.cancelado === true;
+            break;
+          case "ausente":
+            cumpleEstado = t.ausente === true;
+            break;
+          case "pendiente":
+            cumpleEstado = !t.asistio && !t.cancelado && !t.ausente;
+            break;
+          default:
+            cumpleEstado = true;
+        }
+
+        let cumplePago = true;
+        switch (pago) {
+          case "pagado":
+            cumplePago = t.estadoPago === "pagado";
+            break;
+          case "pendiente":
+            cumplePago =
+              (t.estadoPago === "pendiente" || !t.estadoPago) &&
+              (!t.montoAbonado || t.montoAbonado <= 0);
+            break;
+          default:
+            cumplePago = true;
+        }
+
+        if (cumpleFecha && cumpleEstado && cumplePago) {
+          turnos.push(t);
+        }
       }
     });
 
-    turnos.sort((a, b) => {
-      const fechaA = `${a.fecha}T${a.hora}`;
-      const fechaB = `${b.fecha}T${b.hora}`;
-      return fechaA.localeCompare(fechaB);
-    });
+    turnos.sort((a, b) =>
+      `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`)
+    );
 
     const totalPaginas = Math.ceil(turnos.length / porPagina);
+    if (pagina > totalPaginas && totalPaginas > 0) pagina = totalPaginas; // Ajuste si página supera total
+
     const desde = (pagina - 1) * porPagina;
     const hasta = desde + porPagina;
     const turnosPagina = turnos.slice(desde, hasta);
@@ -1003,40 +1140,35 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
               : "-"
           }
         </td>
-        <td>${t.montoAbonado ? `$${t.montoAbonado.toFixed(2)}` : "-"}</td>
+        <td>
+          ${
+            (t.estadoPago === "pendiente" || !t.estadoPago) &&
+            (!t.montoAbonado || t.montoAbonado <= 0)
+              ? '<span class="badge bg-warning text-dark">Pago pendiente</span>'
+              : t.montoAbonado && t.montoAbonado > 0
+              ? `$${t.montoAbonado.toFixed(2)}`
+              : "-"
+          }
+        </td>
         <td>
           <div class="d-flex justify-content-end gap-4 flex-wrap">
             <div class="d-flex gap-2">
               ${
                 !t.asistio && !t.cancelado && !t.ausente
                   ? `
-                    <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió">
-                      <i class="bi bi-check-circle"></i>
-                    </button>
-                    <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado">
-                      <i class="bi bi-x-octagon"></i>
-                    </button>
-                    <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente">
-                      <i class="bi bi-person-x"></i>
-                    </button>
+                    <button class="btn btn-sm btn-success btn-asistio" data-id="${t.id}" title="Marcar como asistió"><i class="bi bi-check-circle"></i></button>
+                    <button class="btn btn-sm btn-warning btn-cancelar" data-id="${t.id}" title="Marcar como cancelado"><i class="bi bi-x-octagon"></i></button>
+                    <button class="btn btn-sm btn-secondary btn-ausente" data-id="${t.id}" title="Marcar como ausente"><i class="bi bi-person-x"></i></button>
                   `
                   : ""
               }
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-info btn-editar" data-id="${
-                t.id
-              }" title="Editar turno">
-                <i class="bi bi-pencil"></i>
-              </button>
+              <button class="btn btn-sm btn-info btn-editar" data-id="${t.id}" title="Editar turno"><i class="bi bi-pencil"></i></button>
               ${
                 t.asistio
-                  ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido">
-                      <i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i>
-                    </button>`
-                  : `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}" title="Eliminar turno">
-                      <i class="bi bi-trash"></i>
-                    </button>`
+                  ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido"><i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i></button>`
+                  : `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${t.id}" title="Eliminar turno"><i class="bi bi-trash"></i></button>`
               }
             </div>
           </div>
@@ -1045,103 +1177,168 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20) {
       tablaTurnos.appendChild(fila);
     }
 
-    // Eventos botones (usando .closest)
-    document.querySelectorAll(".btn-asistio").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const boton = e.target.closest(".btn-asistio");
-        if (!boton) return;
-        const turnoId = boton.dataset.id;
-        const monto = prompt("Monto abonado:", "0");
-        if (monto === null) return;
-        const montoNum = parseFloat(monto);
-        if (isNaN(montoNum) || montoNum < 0) {
-          alert("Monto inválido.");
-          return;
-        }
+    // Crear paginación
+    if (totalPaginas > 1) {
+      // Botón "Anterior"
+      const btnAnterior = document.createElement("button");
+      btnAnterior.textContent = "Anterior";
+      btnAnterior.className = "btn btn-sm btn-primary me-2";
+      btnAnterior.disabled = pagina === 1;
+      btnAnterior.addEventListener("click", () => {
+        cargarTurnosPaginados(pagina - 1, porPagina, filtroDiaSemana);
+      });
+      paginacion.appendChild(btnAnterior);
 
-        const turnoDocRef = doc(db, "turnos", turnoId);
-        const turnoSnap = await getDoc(turnoDocRef);
-        const turno = turnoSnap.data();
-
-        await updateDoc(turnoDocRef, {
-          asistio: true,
-          montoAbonado: montoNum,
+      // Botones numéricos
+      for (let i = 1; i <= totalPaginas; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = "btn btn-sm me-1 " + (i === pagina ? "btn-primary" : "btn-outline-primary");
+        btn.disabled = i === pagina;
+        btn.addEventListener("click", () => {
+          cargarTurnosPaginados(i, porPagina, filtroDiaSemana);
         });
+        paginacion.appendChild(btn);
+      }
 
-        if (montoNum > 0) {
-          await addDoc(collection(db, "caja"), {
-            fecha: hoy(),
-            monto: montoNum,
-            pacienteNombre: turno.pacienteNombre,
-            tipoConsulta: turno.tipoConsulta || "-",
-            detalle: "Pago turno",
-          });
-        }
-
-        alert("Asistencia registrada.");
-        cargarTurnosPaginados(pagina);
+      // Botón "Siguiente"
+      const btnSiguiente = document.createElement("button");
+      btnSiguiente.textContent = "Siguiente";
+      btnSiguiente.className = "btn btn-sm btn-primary ms-2";
+      btnSiguiente.disabled = pagina === totalPaginas;
+      btnSiguiente.addEventListener("click", () => {
+        cargarTurnosPaginados(pagina + 1, porPagina, filtroDiaSemana);
       });
-    });
-
-    document.querySelectorAll(".btn-cancelar").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const boton = e.target.closest(".btn-cancelar");
-        if (!boton) return;
-        const turnoId = boton.dataset.id;
-        if (!confirm("¿Marcar este turno como cancelado?")) return;
-        await updateDoc(doc(db, "turnos", turnoId), { cancelado: true });
-        alert("Turno cancelado.");
-        cargarTurnosPaginados(pagina);
-      });
-    });
-
-    document.querySelectorAll(".btn-ausente").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const boton = e.target.closest(".btn-ausente");
-        if (!boton) return;
-        const turnoId = boton.dataset.id;
-        if (!confirm("¿Marcar este turno como ausente?")) return;
-        await updateDoc(doc(db, "turnos", turnoId), { ausente: true });
-        alert("Turno marcado como ausente.");
-        cargarTurnosPaginados(pagina);
-      });
-    });
-
-    document.querySelectorAll(".btn-eliminar").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const boton = e.target.closest(".btn-eliminar");
-        if (!boton) return;
-        const turnoId = boton.dataset.id;
-        if (!confirm("¿Eliminar este turno?")) return;
-
-        try {
-          await deleteDoc(doc(db, "turnos", turnoId));
-          alert("Turno eliminado.");
-
-          const btnActivo = document.querySelector(
-            "#paginacionTurnos .btn-primary"
-          );
-          const paginaActual = btnActivo ? parseInt(btnActivo.textContent) : 1;
-          cargarTurnosPaginados(paginaActual);
-        } catch (error) {
-          alert("Error al eliminar turno: " + error.message);
-        }
-      });
-    });
-
-    for (let i = 1; i <= totalPaginas; i++) {
-      const btn = document.createElement("button");
-      btn.className = `btn btn-sm mx-1 ${
-        i === pagina ? "btn-primary" : "btn-outline-primary"
-      }`;
-      btn.textContent = i;
-      btn.addEventListener("click", () => cargarTurnosPaginados(i));
-      paginacion.appendChild(btn);
+      paginacion.appendChild(btnSiguiente);
     }
-  } catch (error) {
-    alert("Error al cargar turnos: " + error.message);
+
+    // ⬇️ Event listener para botón "Editar"
+    document.querySelectorAll(".btn-editar").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const docSnap = await getDoc(doc(db, "turnos", id));
+        if (docSnap.exists()) {
+          const t = docSnap.data();
+
+          document.getElementById("editarTurnoId").value = id;
+          document.getElementById("editarFecha").value = t.fecha || "";
+          document.getElementById("editarHora").value = t.hora || "";
+
+          // Estado del turno (de booleanos a select)
+          if (t.asistio) {
+            document.getElementById("editarEstado").value = "asistio";
+          } else if (t.cancelado) {
+            document.getElementById("editarEstado").value = "cancelado";
+          } else if (t.ausente) {
+            document.getElementById("editarEstado").value = "ausente";
+          } else {
+            document.getElementById("editarEstado").value = "";
+          }
+
+          // Estado de pago y campos relacionados
+          const pagoEstado = t.estadoPago || "";
+          const inputEstadoPago = document.getElementById("editarPagoEstado");
+          const inputMonto = document.getElementById("editarMonto");
+          const inputDetalle = document.getElementById("editarDetalle");
+          const divMonto = document.getElementById("editarDivMonto");
+          const divDetalle = document.getElementById("editarDivDetalle");
+
+          inputEstadoPago.value = pagoEstado;
+          inputMonto.value = t.montoAbonado || "";
+          inputDetalle.value = t.detalleDeuda || "";
+
+          // Función para mostrar/ocultar y limpiar según estado de pago
+          function actualizarCamposPago(estado) {
+            if (estado === "pagado") {
+              divMonto.style.display = "block";
+              divDetalle.style.display = "none";
+              inputDetalle.value = "";
+            } else if (estado === "pendiente") {
+              divMonto.style.display = "none";
+              divDetalle.style.display = "block";
+              inputMonto.value = "";
+            } else {
+              divMonto.style.display = "none";
+              divDetalle.style.display = "none";
+              inputMonto.value = "";
+              inputDetalle.value = "";
+            }
+          }
+
+          // Ejecutar la primera vez
+          actualizarCamposPago(pagoEstado);
+
+          // Asignar evento onchange
+          inputEstadoPago.onchange = function () {
+            actualizarCamposPago(this.value);
+          };
+
+          // Mostrar modal
+          new bootstrap.Modal(document.getElementById("modalEditarTurno")).show();
+        }
+      });
+    });
+  } catch (err) {
+    alert("Error al cargar turnos: " + err.message);
   }
 }
+
+
+// ⬇️ Manejador del formulario para guardar cambios del turno
+document.getElementById("formEditarTurno").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const id = document.getElementById("editarTurnoId").value;
+  const fecha = document.getElementById("editarFecha").value;
+  const hora = document.getElementById("editarHora").value;
+  const estado = document.getElementById("editarEstado").value;
+  const estadoPago = document.getElementById("editarPagoEstado").value;
+  const montoAbonado = parseFloat(document.getElementById("editarMonto").value) || 0;
+  const detalleDeuda = document.getElementById("editarDetalle").value.trim();
+
+  const datosEstado = {
+    asistio: false,
+    cancelado: false,
+    ausente: false,
+  };
+  if (estado === "asistio") datosEstado.asistio = true;
+  else if (estado === "cancelado") datosEstado.cancelado = true;
+  else if (estado === "ausente") datosEstado.ausente = true;
+
+  const datos = {
+    fecha,
+    hora,
+    estadoPago,
+    montoAbonado: estadoPago === "pagado" ? montoAbonado : 0,
+    detalleDeuda: estadoPago === "pendiente" ? detalleDeuda : "",
+    ...datosEstado,
+  };
+
+  try {
+    await updateDoc(doc(db, "turnos", id), datos);
+    // Cerrar modal correctamente
+    const modalElement = document.getElementById("modalEditarTurno");
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    modalInstance.hide();
+
+    cargarTurnosPaginados(); // Recargar lista
+    alert("Turno actualizado correctamente.");
+  } catch (error) {
+    console.error("Error al actualizar el turno:", error);
+    alert("No se pudo actualizar el turno.");
+  }
+});
+
+// Quitar backdrop y scroll lock al cerrar modal
+document.getElementById("modalEditarTurno").addEventListener('hidden.bs.modal', () => {
+  const backdrops = document.querySelectorAll('.modal-backdrop');
+  backdrops.forEach(bd => bd.remove());
+  document.body.classList.remove('modal-open');
+});
+
+
+
+
 
 async function obtenerEventosEnRango(fechaInicio, fechaFin) {
   const eventos = [];
@@ -1202,49 +1399,111 @@ async function obtenerEventosEnRango(fechaInicio, fechaFin) {
   return eventos;
 }
 
-function mostrarAgendaTurnos() {
+async function mostrarAgendaTurnos() {
   mainContent.innerHTML = `
     <h1 class="mb-4">Gestión de Turnos</h1>
-    <form id="formTurno" class="row g-3 mb-4">
-      <div class="col-md-4">
-        <label for="fechaTurno" class="form-label">Fecha *</label>
-        <input type="date" id="fechaTurno" class="form-control" required />
-      </div>
-      <div class="col-md-4">
-        <label for="horaTurno" class="form-label">Hora *</label>
-        <input type="time" id="horaTurno" class="form-control" required />
-      </div>
-      <div class="col-md-4">
-        <label for="pacienteSelect" class="form-label">Paciente *</label>
-        <select id="pacienteSelect" class="form-select" required>
-          <option value="" disabled selected>Cargando pacientes...</option>
-        </select>
-      </div>
-      <div class="col-md-6">
-  <label for="tipoConsulta" class="form-label">Tipo de Consulta</label>
-  <select id="tipoConsulta" class="form-select">
-    <option value="" disabled selected>Seleccionar tipo</option>
-    <option value="Consulta general">Consulta general</option>
-    <option value="Control ortodoncia">Control ortodoncia</option>
-    <option value="Extracción">Extracción</option>
-    <option value="Reconstrucción">Reconstrucción</option>
-    <option value="Limpieza">Limpieza</option>
+
+    <!-- Formulario para agendar turno -->
+    <div class="border rounded p-3 mb-4">
+      <form id="formTurno" class="row g-3">
+        <div class="col-md-4">
+          <label for="fechaTurno" class="form-label">Fecha *</label>
+          <input type="date" id="fechaTurno" class="form-control" required />
+        </div>
+        <div class="col-md-2">
+          <label for="horaTurno" class="form-label">Hora *</label>
+          <select id="horaTurno" class="form-select" required>
+            <option value="" disabled selected>Hora</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label for="minutosTurno" class="form-label">Minutos *</label>
+          <select id="minutosTurno" class="form-select" required>
+            <option value="" disabled selected>Minutos</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="pacienteSelect" class="form-label">Paciente *</label>
+          <select id="pacienteSelect" class="form-select" required>
+            <option value="" disabled selected>Cargando pacientes...</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="tipoConsulta" class="form-label">Tipo de Consulta</label>
+          <select id="tipoConsulta" class="form-select">
+            <option value="" disabled selected>Seleccionar tipo</option>
+            <option value="Consulta general">Consulta general</option>
+            <option value="Control ortodoncia">Control ortodoncia</option>
+            <option value="Extracción">Extracción</option>
+            <option value="Reconstrucción">Reconstrucción</option>
+            <option value="Limpieza">Limpieza</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="duracionTurno" class="form-label">Duración (minutos)</label>
+          <select id="duracionTurno" class="form-select">
+            <option value="15" selected>15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+            <option value="60">60</option>
+          </select>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary">Agregar Turno</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Filtros -->
+    <div class="border rounded p-3 mb-4">
+      <form id="formFiltrosTurnos" class="row g-3 align-items-center">
+        <div class="col-md-3">
+          <label for="inputBusquedaPaciente" class="form-label">Buscar paciente</label>
+          <input
+            type="text"
+            id="inputBusquedaPaciente"
+            class="form-control"
+            placeholder="Nombre, apellido o DNI"
+            autocomplete="off"
+          />
+        </div>
+        <div class="col-md-2">
+          <label for="inputFechaDesde" class="form-label">Fecha desde</label>
+          <input type="date" id="inputFechaDesde" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <label for="inputFechaHasta" class="form-label">Fecha hasta</label>
+          <input type="date" id="inputFechaHasta" class="form-control" />
+        </div>
+        <div class="col-md-2 d-flex flex-column">
+          <label class="form-label">Rango</label>
+          <div>
+            <button type="button" id="btnHoy" class="btn btn-outline-primary me-2">Hoy</button>
+            <button type="button" id="btnSemana" class="btn btn-outline-primary">Semana</button>
+          </div>
+        </div>
+<div class="col-md-2">
+  <label for="selectEstado" class="form-label">Estado</label>
+  <select id="selectEstado" class="form-select">
+    <option value="todos" selected>Todos</option>
+    <option value="asistio">Asistió</option>
+    <option value="cancelado">Cancelado</option>
+    <option value="ausente">Ausente</option>
+    <option value="pendiente">Pendiente</option>
+  </select>
+</div>
+<div class="col-md-1">
+  <label for="selectPago" class="form-label">Pago</label>
+  <select id="selectPago" class="form-select">
+    <option value="todos" selected>Todos</option>
+    <option value="pagado">Pagado</option>
+    <option value="pendiente">Pendiente</option>
   </select>
 </div>
 
-      <div class="col-md-6">
-        <label for="duracionTurno" class="form-label">Duración (minutos)</label>
-        <select id="duracionTurno" class="form-select">
-          <option value="15" selected>15</option>
-          <option value="30">30</option>
-          <option value="45">45</option>
-          <option value="60">60</option>
-        </select>
-      </div>
-      <div class="col-md-6 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">Agregar Turno</button>
-      </div>
-    </form>
+
+      </form>
+    </div>
 
     <table class="table table-striped">
       <thead>
@@ -1266,156 +1525,102 @@ function mostrarAgendaTurnos() {
   cargarPacientesSelect();
   cargarTurnosPaginados();
 
-  // Botón editar - con estado
-  document.addEventListener("click", async (e) => {
-    const btnEditar = e.target.closest(".btn-editar");
-    if (btnEditar) {
-      const turnoId = btnEditar.dataset.id;
+  const horaTurno = document.getElementById("horaTurno");
+  const minutosTurno = document.getElementById("minutosTurno");
+  const fechaTurno = document.getElementById("fechaTurno");
 
-      try {
-        const docSnap = await getDoc(doc(db, "turnos", turnoId));
-        if (!docSnap.exists()) return alert("Turno no encontrado");
+  // Horas y minutos fijos
+  const horas = Array.from({ length: 15 }, (_, i) =>
+    (i + 7).toString().padStart(2, "0")
+  );
+  const minutos = ["00", "15", "30", "45"];
 
-        const t = docSnap.data();
+  fechaTurno.addEventListener("change", async () => {
+    const fecha = fechaTurno.value;
+    if (!fecha) return;
 
-        document.getElementById("editarTurnoId").value = turnoId;
-        document.getElementById("editarFecha").value = t.fecha;
-        document.getElementById("editarHora").value = t.hora;
-        document.getElementById("editarMonto").value = t.montoAbonado || 0;
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const turnosDia = [];
 
-        // Setear el estado actual del turno
-        let estado = "";
-        if (t.asistio) estado = "asistio";
-        else if (t.cancelado) estado = "cancelado";
-        else if (t.ausente) estado = "ausente";
+    turnosSnapshot.forEach((doc) => {
+      const t = doc.data();
+      if (t.fecha === fecha) turnosDia.push(t.hora);
+    });
 
-        document.getElementById("editarEstado").value = estado;
-
-        const modal = new bootstrap.Modal(
-          document.getElementById("modalEditarTurno")
-        );
-        modal.show();
-      } catch (err) {
-        alert("Error al cargar turno para editar");
-      }
-    }
-  });
-
-  // Formulario de edición
-  document
-    .getElementById("formEditarTurno")
-    .addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const id = document.getElementById("editarTurnoId").value;
-      const fecha = document.getElementById("editarFecha").value;
-      const hora = document.getElementById("editarHora").value;
-      const monto =
-        parseFloat(document.getElementById("editarMonto").value) || 0;
-      const estado = document.getElementById("editarEstado").value;
-
-      const dataUpdate = {
-        fecha,
-        hora,
-        montoAbonado: monto,
-        asistio: false,
-        cancelado: false,
-        ausente: false,
-      };
-
-      if (estado === "asistio") dataUpdate.asistio = true;
-      else if (estado === "cancelado") dataUpdate.cancelado = true;
-      else if (estado === "ausente") dataUpdate.ausente = true;
-
-      try {
-        // 1) Actualizar turno
-        await updateDoc(doc(db, "turnos", id), dataUpdate);
-
-        // 2) Buscar el turno actualizado para obtener pacienteId y nombre (necesario para caja)
-        const turnoDoc = await getDoc(doc(db, "turnos", id));
-        if (!turnoDoc.exists())
-          throw new Error("Turno no encontrado después de actualizar");
-
-        const turnoData = turnoDoc.data();
-
-        // 3) Buscar si ya existe un movimiento en caja vinculado a este turno
-        const cajaQuery = query(
-          collection(db, "caja"),
-          where("turnoId", "==", id)
-        );
-        const cajaSnapshot = await getDocs(cajaQuery);
-
-        if (cajaSnapshot.empty) {
-          // 4) No existe movimiento caja: crear uno nuevo
-          await addDoc(collection(db, "caja"), {
-            turnoId: id,
-            pacienteId: turnoData.pacienteId || "",
-            pacienteNombre: turnoData.pacienteNombre || "",
-            fecha,
-            hora,
-            monto,
-            tipo: "Ingreso",
-            detalle: `Pago turno ${fecha} ${hora}`,
-            fechaCreacion: new Date().toISOString(),
-          });
-        } else {
-          // 5) Existe movimiento caja: actualizarlo
-          const cajaDoc = cajaSnapshot.docs[0];
-          await updateDoc(doc(db, "caja", cajaDoc.id), {
-            fecha,
-            hora,
-            monto,
-            pacienteNombre: turnoData.pacienteNombre || "",
-            pacienteId: turnoData.pacienteId || "",
-            detalle: `Pago turno ${fecha} ${hora}`,
-          });
-        }
-
-        alert("Turno y caja actualizados correctamente.");
-
-        bootstrap.Modal.getInstance(
-          document.getElementById("modalEditarTurno")
-        ).hide();
-
-        cargarTurnosPaginados();
-        cargarCaja(); // <-- Recarga caja para actualizar valores en pantalla
-      } catch (err) {
-        alert("Error al actualizar turno y caja: " + err.message);
+    horaTurno.innerHTML = `<option value="" disabled selected>Hora</option>`;
+    horas.forEach((h) => {
+      const minutosDisponibles = minutos.filter(
+        (m) => !turnosDia.includes(`${h}:${m}`)
+      );
+      if (minutosDisponibles.length > 0) {
+        const opt = document.createElement("option");
+        opt.value = h;
+        opt.textContent = h;
+        horaTurno.appendChild(opt);
       }
     });
 
-  // Formulario para agregar turnos
+    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+  });
+
+  horaTurno.addEventListener("change", async () => {
+    const horaSeleccionada = horaTurno.value;
+    const fecha = fechaTurno.value;
+    if (!horaSeleccionada || !fecha) return;
+
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const turnosHora = [];
+
+    turnosSnapshot.forEach((doc) => {
+      const t = doc.data();
+      if (t.fecha === fecha && t.hora.startsWith(horaSeleccionada)) {
+        turnosHora.push(t.hora.split(":")[1]);
+      }
+    });
+
+    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+    minutos.forEach((m) => {
+      if (!turnosHora.includes(m)) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        minutosTurno.appendChild(opt);
+      }
+    });
+  });
+
   document.getElementById("formTurno").addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const fecha = document.getElementById("fechaTurno").value;
-    const hora = document.getElementById("horaTurno").value;
+    const fecha = fechaTurno.value;
+    const hora = horaTurno.value;
+    const minuto = minutosTurno.value;
     const pacienteId = document.getElementById("pacienteSelect").value;
-    const tipoConsulta = document.getElementById("tipoConsulta").value.trim();
+    const tipoConsulta = document.getElementById("tipoConsulta").value;
     const duracion = parseInt(
       document.getElementById("duracionTurno").value,
       10
     );
 
-    if (!fecha || !hora || !pacienteId || isNaN(duracion) || duracion <= 0) {
-      alert(
-        "Complete todos los campos obligatorios y ponga una duración válida."
-      );
+    if (!fecha || !hora || !minuto || !pacienteId || isNaN(duracion)) {
+      alert("Completá todos los campos obligatorios.");
       return;
     }
 
+    const horaCompleta = `${hora}:${minuto}`;
+
     try {
-      // Verificar duplicado
       const turnosSnapshot = await getDocs(collection(db, "turnos"));
-      let yaExiste = false;
+      let ocupado = false;
       turnosSnapshot.forEach((doc) => {
         const t = doc.data();
-        if (t.fecha === fecha && t.hora === hora) {
-          yaExiste = true;
+        if (t.fecha === fecha && t.hora === horaCompleta) {
+          ocupado = true;
         }
       });
-      if (yaExiste) {
-        alert("Ya hay un turno registrado en ese horario. Elegí otro.");
+
+      if (ocupado) {
+        alert("Ese turno ya está ocupado.");
         return;
       }
 
@@ -1425,26 +1630,105 @@ function mostrarAgendaTurnos() {
         return;
       }
 
-      const pacienteData = pacienteDoc.data();
+      const paciente = pacienteDoc.data();
 
       await addDoc(collection(db, "turnos"), {
         fecha,
-        hora,
+        hora: horaCompleta,
         pacienteId,
-        pacienteNombre: pacienteData.apellido + " " + pacienteData.nombre,
+        pacienteNombre: `${paciente.apellido} ${paciente.nombre}`,
         tipoConsulta,
-        asistio: false,
-        montoAbonado: 0,
         duracionMinutos: duracion,
+        asistio: false,
+        cancelado: false,
+        ausente: false,
+        montoAbonado: 0,
       });
 
-      alert("Turno agregado.");
-      cargarTurnosPaginados();
+      alert("Turno agregado correctamente.");
       e.target.reset();
+      cargarTurnosPaginados();
     } catch (error) {
-      alert("Error al agregar turno: " + error.message);
+      alert("Error al agregar el turno: " + error.message);
     }
   });
+
+  // --- FILTROS ---
+  // Reemplazamos este bloque por el siguiente:
+
+  // Variables de filtros (ya declaradas anteriormente en esta misma sección)
+  // const inputBusquedaPaciente, inputFechaDesde, inputFechaHasta, selectEstado, selectPago,
+  // btnHoy, btnSemana ya están declarados.
+
+  function formatearFecha(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function obtenerLunes(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  function obtenerSabadoSemana(lunes) {
+    const sabado = new Date(lunes);
+    sabado.setDate(lunes.getDate() + 5);
+    return sabado;
+  }
+
+  function activarBoton(btnActivo) {
+    [btnHoy, btnSemana].forEach((btn) => {
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-outline-primary");
+    });
+    if (btnActivo) {
+      btnActivo.classList.remove("btn-outline-primary");
+      btnActivo.classList.add("btn-primary");
+    }
+  }
+
+  btnHoy.addEventListener("click", () => {
+    const hoyDate = new Date();
+    const hoyStr = formatearFecha(hoyDate);
+    inputFechaDesde.value = hoyStr;
+    inputFechaHasta.value = hoyStr;
+    activarBoton(btnHoy);
+    cargarTurnosPaginados(1, 20, "dia");
+  });
+
+  btnSemana.addEventListener("click", () => {
+    const hoyDate = new Date();
+    const lunes = obtenerLunes(hoyDate);
+    const sabado = obtenerSabadoSemana(lunes);
+    inputFechaDesde.value = formatearFecha(lunes);
+    inputFechaHasta.value = formatearFecha(sabado);
+    activarBoton(btnSemana);
+    cargarTurnosPaginados(1, 20, "semana");
+  });
+
+  // Actualizar tabla al cambiar filtros manuales
+  const actualizarTurnos = () => cargarTurnosPaginados(1, 20, "");
+  inputBusquedaPaciente.addEventListener("input", actualizarTurnos);
+  inputFechaDesde.addEventListener("change", () => {
+    activarBoton(null);
+    actualizarTurnos();
+  });
+  inputFechaHasta.addEventListener("change", () => {
+    activarBoton(null);
+    actualizarTurnos();
+  });
+  selectEstado.addEventListener("change", () =>
+    cargarTurnosPaginados(1, 20, "")
+  );
+  selectPago.addEventListener("change", () => cargarTurnosPaginados(1, 20, ""));
+
+  // Al cargar la página, activar botón "Hoy" y cargar turnos
+  btnHoy.click();
 }
 
 let cajaMovimientosFiltrados = [];

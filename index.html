@@ -315,86 +315,109 @@
     </div>
 
     <!-- Modal Editar Turno -->
-    <div
-      class="modal fade"
-      id="modalEditarTurno"
-      tabindex="-1"
-      aria-labelledby="modalEditarTurnoLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog">
-        <form id="formEditarTurno" class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modalEditarTurnoLabel">Editar Turno</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Cerrar"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="editarTurnoId" />
-
-            <div class="mb-3">
-              <label for="editarFecha" class="form-label">Fecha *</label>
-              <input
-                type="date"
-                class="form-control"
-                id="editarFecha"
-                required
-              />
-            </div>
-
-            <div class="mb-3">
-              <label for="editarHora" class="form-label">Hora *</label>
-              <input
-                type="time"
-                class="form-control"
-                id="editarHora"
-                required
-              />
-            </div>
-
-            <div class="mb-3">
-              <label for="editarMonto" class="form-label">Monto abonado</label>
-              <input
-                type="number"
-                class="form-control"
-                id="editarMonto"
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div class="mb-3">
-              <label for="editarEstado" class="form-label"
-                >Estado del turno</label
-              >
-              <select id="editarEstado" class="form-select">
-                <option value="">Sin estado</option>
-                <option value="asistio">Asistió</option>
-                <option value="cancelado">Cancelado</option>
-                <option value="ausente">Ausente</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary">
-              Guardar cambios
-            </button>
-          </div>
-        </form>
+<div
+  class="modal fade"
+  id="modalEditarTurno"
+  tabindex="-1"
+  aria-labelledby="modalEditarTurnoLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <form id="formEditarTurno" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEditarTurnoLabel">Editar Turno</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Cerrar"
+        ></button>
       </div>
-    </div>
+      <div class="modal-body">
+        <input type="hidden" id="editarTurnoId" />
+
+        <div class="mb-3">
+          <label for="editarFecha" class="form-label">Fecha *</label>
+          <input
+            type="date"
+            class="form-control"
+            id="editarFecha"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="editarHora" class="form-label">Hora *</label>
+          <input
+            type="time"
+            class="form-control"
+            id="editarHora"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="editarEstado" class="form-label"
+            >Estado del turno</label
+          >
+          <select id="editarEstado" class="form-select">
+            <option value="">Sin estado</option>
+            <option value="asistio">Asistió</option>
+            <option value="cancelado">Cancelado</option>
+            <option value="ausente">Ausente</option>
+          </select>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
+          <label for="editarPagoEstado" class="form-label">Estado de pago</label>
+          <select id="editarPagoEstado" class="form-select" required>
+            <option value="">Seleccionar</option>
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente</option>
+          </select>
+        </div>
+
+        <div class="mb-3" id="editarDivMonto">
+          <label for="editarMonto" class="form-label">Monto abonado</label>
+          <input
+            type="number"
+            class="form-control"
+            id="editarMonto"
+            min="0"
+            step="0.01"
+            placeholder="Ej: 1500"
+          />
+        </div>
+
+        <div class="mb-3" id="editarDivDetalle">
+          <label for="editarDetalle" class="form-label">Detalle de deuda</label>
+          <textarea
+            id="editarDetalle"
+            class="form-control"
+            rows="2"
+            placeholder="Ej: Debe $15,000"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-dismiss="modal"
+        >
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Guardar cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
     <!-- Modal para crear/editar paciente -->
     <div
       class="modal fade"
@@ -531,6 +554,47 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal para marcar asistencia y pago -->
+<div class="modal fade" id="modalAsistenciaPago" tabindex="-1" aria-labelledby="modalAsistenciaPagoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formAsistenciaPago">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalAsistenciaPagoLabel">Marcar Asistencia y Pago</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="turnoId" />
+
+          <div class="mb-3">
+            <label for="selectPagoEstado" class="form-label">Estado de pago</label>
+            <select id="selectPagoEstado" class="form-select" required>
+              <option value="">Seleccionar</option>
+              <option value="pagado">Pagado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+
+          <div class="mb-3 d-none" id="divMonto">
+            <label for="inputMonto" class="form-label">Monto abonado</label>
+            <input type="number" step="0.01" min="0" id="inputMonto" class="form-control" placeholder="Ej: 1500" />
+          </div>
+
+          <div class="mb-3 d-none" id="divDetalle">
+            <label for="inputDetalle" class="form-label">Detalle de deuda</label>
+            <textarea id="inputDetalle" class="form-control" rows="2" placeholder="Ej: Debe $15,000"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 
     <!-- Tu script principal -->
     <script type="module" src="script.js"></script>
