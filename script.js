@@ -1,13 +1,14 @@
-// Función auxiliar para obtener fecha hoy en formato YYYY-MM-DD
-function hoy() {
-  const ahora = new Date();
-  const año = ahora.getFullYear();
-  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  const dia = String(ahora.getDate()).padStart(2, "0");
-  return `${año}-${mes}-${dia}`;
+// Función auxiliar para obtener la fecha de hoy en formato YYYY-MM-DD
+export function hoy() {
+  const now = new Date();
+  now.setDate(now.getDate() + 1); // sumo 1 día
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-// Import Firebase
+// Importar Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
   getFirestore,
@@ -23,7 +24,7 @@ import {
   orderBy,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-// Config Firebase
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAQwEe9C-ruCZ6TX612zA6FhkxZUJ2rVoc",
   authDomain: "consultoriosapp-f7f08.firebaseapp.com",
@@ -33,22 +34,25 @@ const firebaseConfig = {
   appId: "1:729983357456:web:61f5805927509dfeefb095",
 };
 
-// Inicializar app y firestore
+// Inicializar app y Firestore
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+export const db = getFirestore(app);
 
 // Referencias globales
-const mainContent = document.getElementById("mainContent");
-let listaPacientes = [];
-let listaTurnos = [];
-let paginaActualTurnos = 1;
-const turnosPorPagina = 20;
-let turnosFiltrados = [];
+export const mainContent = document.getElementById("mainContent");
 
-let pacientesGlobalFiltrados = []; // pacientes filtrados
+export let listaPacientes = [];
+export let listaTurnos = [];
+export let paginaActualTurnos = 1;
+export const turnosPorPagina = 20;
+export let turnosFiltrados = [];
+
+export let pacientesGlobalFiltrados = []; // pacientes filtrados
+
 // Variable global para controlar si estamos editando un paciente
-let pacienteEditandoId = null;
-let calendar;
+export let pacienteEditandoId = null;
+
+export let calendar;
 
 async function mostrarInicio() {
   mainContent.innerHTML = `
@@ -847,11 +851,19 @@ function mostrarGestionPacientes() {
       <div class="col-lg-8">
         <div id="tituloPacientes" class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="mb-0">Mis Pacientes</h2>
+          <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              + Nuevo
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" id="opcionNuevoPaciente">Nuevo Paciente</a></li>
+              <li><a class="dropdown-item" href="#" id="opcionNuevoPresupuesto">Nuevo Presupuesto</a></li>
+            </ul>
+          </div>
         </div>
 
         <div id="contenedorBuscadorBtn" class="d-flex gap-2 mb-3">
           <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
-          <button class="btn btn-primary" id="btnNuevoPaciente">Nuevo Paciente</button>
         </div>
 
         <div id="filtroPacientesNuevosContainer">
@@ -904,15 +916,49 @@ function mostrarGestionPacientes() {
 
   // Variables y elementos
   const inputBuscador = document.getElementById("buscadorPacientes");
-  const btnNuevoPaciente = document.getElementById("btnNuevoPaciente");
   const btnFiltrarNuevos = document.getElementById("btnFiltrarNuevos");
   const fechaDesde = document.getElementById("fechaDesde");
   const fechaHasta = document.getElementById("fechaHasta");
+  const opcionNuevoPaciente = document.getElementById("opcionNuevoPaciente");
+  const opcionNuevoPresupuesto = document.getElementById(
+    "opcionNuevoPresupuesto"
+  );
 
   let filtroNuevosActivo = false;
 
-  btnNuevoPaciente.addEventListener("click", () => {
+  opcionNuevoPaciente.addEventListener("click", (e) => {
+    e.preventDefault();
     abrirModalPaciente();
+  });
+
+  // Aquí abrimos el modal Presupuesto cuando clickean esa opción:
+  const modalPresupuestoEl = document.getElementById("modalPresupuesto");
+  const modalPresupuesto = new bootstrap.Modal(modalPresupuestoEl);
+
+  // Referencias inputs modal Presupuesto
+  const inputFecha = document.getElementById("presupuestoFecha");
+  const selectTratamiento = document.getElementById("presupuestoTratamiento");
+  const selectCuotas = document.getElementById("presupuestoCuotas");
+  const inputMontoPorCuota = document.getElementById("montoPorCuota");
+  const inputTotalPresupuesto = document.getElementById("totalPresupuesto");
+  const inputPaciente = document.getElementById("presupuestoPaciente");
+
+  function abrirModalPresupuesto() {
+    // Setear valores iniciales al abrir modal
+    const hoy = new Date().toISOString().split("T")[0];
+    inputFecha.value = hoy;
+    selectTratamiento.value = "";
+    selectCuotas.value = "1";
+    inputMontoPorCuota.value = "0";
+    inputTotalPresupuesto.value = "0";
+    inputPaciente.value = "";
+
+    modalPresupuesto.show();
+  }
+
+  opcionNuevoPresupuesto.addEventListener("click", (e) => {
+    e.preventDefault();
+    abrirModalPresupuesto();
   });
 
   inputBuscador.addEventListener("input", () => {
@@ -930,14 +976,12 @@ function mostrarGestionPacientes() {
   btnFiltrarNuevos.addEventListener("click", () => {
     filtroNuevosActivo = !filtroNuevosActivo;
 
-    // Toggle estilo botón
     btnFiltrarNuevos.classList.toggle(
       "btn-outline-secondary",
       !filtroNuevosActivo
     );
     btnFiltrarNuevos.classList.toggle("btn-secondary", filtroNuevosActivo);
 
-    // Si se activa, setea fechas al mes actual
     if (filtroNuevosActivo) {
       const hoy = new Date();
       const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -1009,6 +1053,159 @@ function mostrarFormularioEdicion(id, paciente) {
   // Enfocar el primer campo
   document.getElementById("modalApellido").focus();
 }
+async function mostrarPresupuestosPaciente(pacienteId) {
+  const contenedor = document.getElementById("listaPresupuestos");
+  contenedor.innerHTML = "<p>Cargando presupuestos...</p>";
+
+  try {
+    const presupuestosRef = collection(db, "presupuestos");
+    const q = query(presupuestosRef, where("pacienteId", "==", pacienteId));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      contenedor.innerHTML = "<p>No hay presupuestos registrados.</p>";
+      return;
+    }
+
+    let html = "";
+    querySnapshot.forEach((doc) => {
+      const p = doc.data();
+      html += `
+        <div class="card mb-2">
+          <div class="card-body">
+            <h5 class="card-title">${p.tratamiento}</h5>
+            <p class="card-text">Fecha: ${p.fecha}</p>
+            <p class="card-text">Monto: $${p.importe}</p>
+            <p class="card-text">Cuotas: ${p.cuotas} x $${p.montoCuota}</p>
+          </div>
+        </div>
+      `;
+    });
+
+    contenedor.innerHTML = html;
+  } catch (error) {
+    contenedor.innerHTML = "<p>Error al cargar los presupuestos.</p>";
+    console.error("Error obteniendo presupuestos:", error);
+  }
+}
+
+// Referencias modal y formulario Presupuesto
+const modalPresupuestoEl = document.getElementById("modalPresupuesto");
+const modalPresupuesto = new bootstrap.Modal(modalPresupuestoEl);
+const formModalPresupuesto = document.getElementById("formModalPresupuesto");
+const listaPacientesDatalist = document.getElementById("listaPacientes");
+const inputPaciente = document.getElementById("presupuestoPaciente");
+
+const inputFecha = document.getElementById("presupuestoFecha");
+const selectTratamiento = document.getElementById("presupuestoTratamiento");
+const selectCuotas = document.getElementById("presupuestoCuotas");
+const inputMontoPorCuota = document.getElementById("montoPorCuota");
+const inputTotalPresupuesto = document.getElementById("totalPresupuesto");
+
+let pacientesParaDatalist = []; // lista local para validar paciente al guardar
+
+// Cargar pacientes para autocompletar datalist
+async function cargarPacientesDatalist() {
+  pacientesParaDatalist = [];
+  listaPacientesDatalist.innerHTML = "";
+
+  const snapshot = await getDocs(collection(db, "pacientes"));
+  snapshot.forEach((doc) => {
+    const p = { id: doc.id, ...doc.data() };
+    pacientesParaDatalist.push(p);
+    const option = document.createElement("option");
+    option.value = p.nombre + " " + p.apellido; // Mostrar nombre completo
+    listaPacientesDatalist.appendChild(option);
+  });
+}
+
+// Validar paciente ingresado (que exista en la lista)
+function obtenerPacienteSeleccionado() {
+  const texto = inputPaciente.value.trim().toLowerCase();
+  return pacientesParaDatalist.find(
+    (p) => (p.nombre + " " + p.apellido).toLowerCase() === texto
+  );
+}
+
+// Actualizar monto por cuota según total y cuotas
+function actualizarMontoPorCuota() {
+  const total = parseFloat(inputTotalPresupuesto.value) || 0;
+  const cuotas = parseInt(selectCuotas.value) || 1;
+  const montoCuota = cuotas > 0 ? total / cuotas : 0;
+  inputMontoPorCuota.value = montoCuota.toFixed(2);
+}
+
+// Eventos para actualizar monto por cuota cuando cambian cuotas o total
+selectCuotas.addEventListener("change", actualizarMontoPorCuota);
+inputTotalPresupuesto.addEventListener("input", actualizarMontoPorCuota);
+
+// Evento submit formulario presupuesto
+formModalPresupuesto.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  formModalPresupuesto.classList.add("was-validated");
+
+  // Validar paciente
+  const pacienteSeleccionado = obtenerPacienteSeleccionado();
+  if (!pacienteSeleccionado) {
+    inputPaciente.classList.add("is-invalid");
+    return;
+  } else {
+    inputPaciente.classList.remove("is-invalid");
+  }
+
+  // Validar tratamiento
+  if (!selectTratamiento.value) {
+    selectTratamiento.classList.add("is-invalid");
+    return;
+  } else {
+    selectTratamiento.classList.remove("is-invalid");
+  }
+
+  // Validar fecha
+  if (!inputFecha.value) {
+    inputFecha.classList.add("is-invalid");
+    return;
+  } else {
+    inputFecha.classList.remove("is-invalid");
+  }
+
+  // Validar monto total
+  const total = parseFloat(inputTotalPresupuesto.value);
+  if (isNaN(total) || total <= 0) {
+    inputTotalPresupuesto.classList.add("is-invalid");
+    return;
+  } else {
+    inputTotalPresupuesto.classList.remove("is-invalid");
+  }
+
+  // Crear objeto presupuesto
+  const presupuesto = {
+    pacienteId: pacienteSeleccionado.id,
+    pacienteNombre:
+      pacienteSeleccionado.nombre + " " + pacienteSeleccionado.apellido,
+    fechaCreacion: inputFecha.value,
+    tratamiento: selectTratamiento.value,
+    cuotas: parseInt(selectCuotas.value),
+    montoPorCuota: parseFloat(inputMontoPorCuota.value),
+    lineas: [], // ya no hay líneas
+    total: total,
+    estado: "Pendiente",
+  };
+
+  try {
+    await addDoc(collection(db, "presupuestos"), presupuesto);
+    alert("Presupuesto guardado correctamente");
+    formModalPresupuesto.reset();
+    inputMontoPorCuota.value = "0";
+    modalPresupuesto.hide();
+  } catch (error) {
+    alert("Error guardando presupuesto: " + error.message);
+  }
+});
+
+// Inicialización
+cargarPacientesDatalist();
+actualizarMontoPorCuota();
 
 // --- GESTIÓN TURNOS ---
 
@@ -1027,7 +1224,11 @@ async function cargarPacientesSelect() {
 }
 
 // Función para cargar y mostrar los turnos filtrados y paginados
-async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana = "") {
+async function cargarTurnosPaginados(
+  pagina = 1,
+  porPagina = 20,
+  filtroDiaSemana = ""
+) {
   const tablaTurnos = document.getElementById("tablaTurnos");
   const paginacion = document.getElementById("paginacionTurnos");
   if (!tablaTurnos || !paginacion) return;
@@ -1035,7 +1236,10 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
   tablaTurnos.innerHTML = "";
   paginacion.innerHTML = "";
 
-  const busqueda = document.getElementById("inputBusquedaPaciente").value.trim().toLowerCase();
+  const busqueda = document
+    .getElementById("inputBusquedaPaciente")
+    .value.trim()
+    .toLowerCase();
   const fechaDesde = document.getElementById("inputFechaDesde").value;
   const fechaHasta = document.getElementById("inputFechaHasta").value;
   const estado = document.getElementById("selectEstado").value;
@@ -1067,7 +1271,8 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
           lunes.setDate(hoy.getDate() - (dia === 0 ? 6 : dia - 1));
           const sabado = new Date(lunes);
           sabado.setDate(lunes.getDate() + 5);
-          cumpleFecha = t.fecha >= formatDate(lunes) && t.fecha <= formatDate(sabado);
+          cumpleFecha =
+            t.fecha >= formatDate(lunes) && t.fecha <= formatDate(sabado);
         } else {
           if (fechaDesde && t.fecha < fechaDesde) cumpleFecha = false;
           if (fechaHasta && t.fecha > fechaHasta) cumpleFecha = false;
@@ -1164,7 +1369,9 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
               }
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-info btn-editar" data-id="${t.id}" title="Editar turno"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-info btn-editar" data-id="${
+                t.id
+              }" title="Editar turno"><i class="bi bi-pencil"></i></button>
               ${
                 t.asistio
                   ? `<button class="btn btn-sm btn-outline-danger" disabled title="No se puede eliminar un turno asistido"><i class="bi bi-trash" style="text-decoration: line-through; opacity: 0.5;"></i></button>`
@@ -1193,7 +1400,9 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
       for (let i = 1; i <= totalPaginas; i++) {
         const btn = document.createElement("button");
         btn.textContent = i;
-        btn.className = "btn btn-sm me-1 " + (i === pagina ? "btn-primary" : "btn-outline-primary");
+        btn.className =
+          "btn btn-sm me-1 " +
+          (i === pagina ? "btn-primary" : "btn-outline-primary");
         btn.disabled = i === pagina;
         btn.addEventListener("click", () => {
           cargarTurnosPaginados(i, porPagina, filtroDiaSemana);
@@ -1247,7 +1456,6 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
           inputMonto.value = t.montoAbonado || "";
           inputDetalle.value = t.detalleDeuda || "";
 
-          // Función para mostrar/ocultar y limpiar según estado de pago
           function actualizarCamposPago(estado) {
             if (estado === "pagado") {
               divMonto.style.display = "block";
@@ -1265,16 +1473,79 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
             }
           }
 
-          // Ejecutar la primera vez
           actualizarCamposPago(pagoEstado);
 
-          // Asignar evento onchange
           inputEstadoPago.onchange = function () {
             actualizarCamposPago(this.value);
           };
 
-          // Mostrar modal
-          new bootstrap.Modal(document.getElementById("modalEditarTurno")).show();
+          new bootstrap.Modal(
+            document.getElementById("modalEditarTurno")
+          ).show();
+        }
+      });
+    });
+
+    // ⬇️ Event listeners para botones de marcar estado del turno
+    document.querySelectorAll(".btn-asistio").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          await updateDoc(doc(db, "turnos", id), {
+            asistio: true,
+            cancelado: false,
+            ausente: false,
+          });
+          cargarTurnosPaginados(pagina, porPagina, filtroDiaSemana);
+        } catch (error) {
+          alert("Error al marcar asistió: " + error.message);
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-cancelar").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          await updateDoc(doc(db, "turnos", id), {
+            asistio: false,
+            cancelado: true,
+            ausente: false,
+          });
+          cargarTurnosPaginados(pagina, porPagina, filtroDiaSemana);
+        } catch (error) {
+          alert("Error al marcar cancelado: " + error.message);
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-ausente").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          await updateDoc(doc(db, "turnos", id), {
+            asistio: false,
+            cancelado: false,
+            ausente: true,
+          });
+          cargarTurnosPaginados(pagina, porPagina, filtroDiaSemana);
+        } catch (error) {
+          alert("Error al marcar ausente: " + error.message);
+        }
+      });
+    });
+
+    // ⬇️ Event listener para botón "Eliminar"
+    document.querySelectorAll(".btn-eliminar").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (confirm("¿Seguro que querés eliminar este turno?")) {
+          try {
+            await deleteDoc(doc(db, "turnos", id));
+            cargarTurnosPaginados(pagina, porPagina, filtroDiaSemana);
+          } catch (error) {
+            alert("Error al eliminar turno: " + error.message);
+          }
         }
       });
     });
@@ -1283,62 +1554,181 @@ async function cargarTurnosPaginados(pagina = 1, porPagina = 20, filtroDiaSemana
   }
 }
 
-
 // ⬇️ Manejador del formulario para guardar cambios del turno
-document.getElementById("formEditarTurno").addEventListener("submit", async (e) => {
-  e.preventDefault();
+document
+  .getElementById("formEditarTurno")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const id = document.getElementById("editarTurnoId").value;
-  const fecha = document.getElementById("editarFecha").value;
-  const hora = document.getElementById("editarHora").value;
-  const estado = document.getElementById("editarEstado").value;
-  const estadoPago = document.getElementById("editarPagoEstado").value;
-  const montoAbonado = parseFloat(document.getElementById("editarMonto").value) || 0;
-  const detalleDeuda = document.getElementById("editarDetalle").value.trim();
+    const id = document.getElementById("editarTurnoId").value;
+    const fecha = document.getElementById("editarFecha").value;
+    const hora = document.getElementById("editarHora").value;
+    const estado = document.getElementById("editarEstado").value;
+    const estadoPago = document.getElementById("editarPagoEstado").value;
+    const montoAbonado =
+      parseFloat(document.getElementById("editarMonto").value) || 0;
+    const detalleDeuda = document.getElementById("editarDetalle").value.trim();
 
-  const datosEstado = {
-    asistio: false,
-    cancelado: false,
-    ausente: false,
-  };
-  if (estado === "asistio") datosEstado.asistio = true;
-  else if (estado === "cancelado") datosEstado.cancelado = true;
-  else if (estado === "ausente") datosEstado.ausente = true;
+    const datosEstado = {
+      asistio: false,
+      cancelado: false,
+      ausente: false,
+    };
+    if (estado === "asistio") datosEstado.asistio = true;
+    else if (estado === "cancelado") datosEstado.cancelado = true;
+    else if (estado === "ausente") datosEstado.ausente = true;
 
-  const datos = {
-    fecha,
-    hora,
-    estadoPago,
-    montoAbonado: estadoPago === "pagado" ? montoAbonado : 0,
-    detalleDeuda: estadoPago === "pendiente" ? detalleDeuda : "",
-    ...datosEstado,
-  };
+    const datos = {
+      fecha,
+      hora,
+      estadoPago,
+      montoAbonado: estadoPago === "pagado" ? montoAbonado : 0,
+      detalleDeuda: estadoPago === "pendiente" ? detalleDeuda : "",
+      ...datosEstado,
+    };
 
-  try {
-    await updateDoc(doc(db, "turnos", id), datos);
-    // Cerrar modal correctamente
-    const modalElement = document.getElementById("modalEditarTurno");
-    const modalInstance = bootstrap.Modal.getInstance(modalElement);
-    modalInstance.hide();
+    try {
+      await updateDoc(doc(db, "turnos", id), datos);
+      // Cerrar modal correctamente
+      const modalElement = document.getElementById("modalEditarTurno");
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      modalInstance.hide();
 
-    cargarTurnosPaginados(); // Recargar lista
-    alert("Turno actualizado correctamente.");
-  } catch (error) {
-    console.error("Error al actualizar el turno:", error);
-    alert("No se pudo actualizar el turno.");
+      cargarTurnosPaginados(); // Recargar lista
+      alert("Turno actualizado correctamente.");
+    } catch (error) {
+      console.error("Error al actualizar el turno:", error);
+      alert("No se pudo actualizar el turno.");
+    }
+  });
+
+// Quitar backdrop y scroll lock al cerrar modal
+document
+  .getElementById("modalEditarTurno")
+  .addEventListener("hidden.bs.modal", () => {
+    const backdrops = document.querySelectorAll(".modal-backdrop");
+    backdrops.forEach((bd) => bd.remove());
+    document.body.classList.remove("modal-open");
+  });
+
+// Referencia al modal de Bootstrap
+const modalPagoTurno = new bootstrap.Modal(
+  document.getElementById("modalPagoTurno")
+);
+
+// Mostrar/Ocultar campos según estado de pago seleccionado
+document
+  .getElementById("selectEstadoPago")
+  .addEventListener("change", function () {
+    const estado = this.value;
+    document.getElementById("divMontoPago").style.display =
+      estado === "pagado" ? "block" : "none";
+    document.getElementById("divDetallePago").style.display =
+      estado === "pendiente" ? "block" : "none";
+  });
+
+// Abrir modal para pago cuando clickeás "Asistió"
+document.addEventListener("click", async (e) => {
+  if (e.target.closest(".btn-asistio")) {
+    const id = e.target.closest(".btn-asistio").getAttribute("data-id");
+    if (!id) return;
+
+    try {
+      const docTurno = await getDoc(doc(db, "turnos", id));
+      if (!docTurno.exists()) {
+        alert("Turno no encontrado");
+        return;
+      }
+      const turno = docTurno.data();
+
+      document.getElementById("pagoPacienteNombre").textContent =
+        turno.pacienteNombre || "-";
+      document.getElementById("pagoFecha").textContent = turno.fecha || "-";
+      document.getElementById("pagoTipoConsulta").textContent =
+        turno.tipoConsulta || "-";
+
+      document.getElementById("selectEstadoPago").value =
+        turno.estadoPago || "";
+      document.getElementById("inputMontoPago").value =
+        turno.montoAbonado || "";
+      document.getElementById("textareaDetallePago").value =
+        turno.detalleDeuda || "";
+      document.getElementById("idTurnoPago").value = id;
+
+      // Mostrar campos según estado actual
+      const estado = turno.estadoPago || "";
+      document.getElementById("divMontoPago").style.display =
+        estado === "pagado" ? "block" : "none";
+      document.getElementById("divDetallePago").style.display =
+        estado === "pendiente" ? "block" : "none";
+
+      modalPagoTurno.show();
+    } catch (error) {
+      alert("Error al cargar turno: " + error.message);
+    }
   }
 });
 
-// Quitar backdrop y scroll lock al cerrar modal
-document.getElementById("modalEditarTurno").addEventListener('hidden.bs.modal', () => {
-  const backdrops = document.querySelectorAll('.modal-backdrop');
-  backdrops.forEach(bd => bd.remove());
-  document.body.classList.remove('modal-open');
-});
+// Manejar submit del formulario de pago
+document
+  .getElementById("formPagoTurno")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
 
+    const idTurno = document.getElementById("idTurnoPago").value;
+    const estadoPago = document.getElementById("selectEstadoPago").value;
+    const montoPago =
+      parseFloat(document.getElementById("inputMontoPago").value) || 0;
+    const detallePago = document
+      .getElementById("textareaDetallePago")
+      .value.trim();
 
+    if (!estadoPago) {
+      alert("Seleccioná un estado de pago.");
+      return;
+    }
 
+    if (estadoPago === "pagado" && montoPago <= 0) {
+      alert("Ingresá un monto válido mayor a cero.");
+      return;
+    }
 
+    try {
+      // Actualizar turno con datos de pago y marcar asistió
+      await updateDoc(doc(db, "turnos", idTurno), {
+        asistio: true,
+        cancelado: false,
+        ausente: false,
+        estadoPago,
+        montoAbonado: estadoPago === "pagado" ? montoPago : 0,
+        detalleDeuda: estadoPago === "pendiente" ? detallePago : "",
+      });
+
+      // Si el pago es pagado y monto > 0, agregar registro en caja
+      if (estadoPago === "pagado" && montoPago > 0) {
+        const turnoDoc = await getDoc(doc(db, "turnos", idTurno));
+        const turnoData = turnoDoc.data();
+
+        await addDoc(collection(db, "caja"), {
+          fecha: turnoData.fecha,
+          hora: turnoData.hora || "00:00",
+          tipo: "ingreso",
+          concepto: `Pago de consulta`,
+          monto: montoPago,
+          turnoId: idTurno,
+          pacienteNombre: turnoData.pacienteNombre || "",
+          tipoConsulta: turnoData.tipoConsulta || "",
+          detalle: "Pago de consulta",
+          creadoEn: new Date().toISOString(),
+        });
+      }
+      modalPagoTurno.hide();
+      cargarTurnosPaginados();
+      alert("Pago registrado y turno marcado como asistido.");
+    } catch (error) {
+      alert("Error al guardar pago: " + error.message);
+    }
+  });
 
 async function obtenerEventosEnRango(fechaInicio, fechaFin) {
   const eventos = [];
@@ -1779,13 +2169,12 @@ async function cargarCaja(filtroDesde = "", filtroHasta = "") {
       }
     });
 
-    // ---- AGREGADO: ordenar por fecha descendente (más recientes primero) ----
+    // Ordenar por fecha y hora ascendente (más antiguo primero)
     cajaMovimientosFiltrados.sort((a, b) => {
       const fechaHoraA = new Date(a.fecha + "T" + (a.hora || "00:00"));
       const fechaHoraB = new Date(b.fecha + "T" + (b.hora || "00:00"));
-      return fechaHoraB - fechaHoraA;
+      return fechaHoraA - fechaHoraB;
     });
-    // -------------------------------------------------------------------------
 
     const resumenIngresos = document.getElementById("resumenIngresos");
     const resumenEgresos = document.getElementById("resumenEgresos");
@@ -1820,13 +2209,16 @@ function mostrarPaginaCaja() {
   paginaItems.forEach((pago) => {
     const fila = document.createElement("tr");
     fila.innerHTML = `
-      <td>${pago.fecha}</td>
-      <td class="fw-bold ${pago.monto >= 0 ? "text-success" : "text-danger"}">
+      <td class="text-center">${pago.fecha || "-"}</td>
+      <td class="text-center">${pago.hora || "--:--"}</td>
+      <td class="fw-bold text-center ${
+        pago.monto >= 0 ? "text-success" : "text-danger"
+      }">
         $${pago.monto.toFixed(2)}
       </td>
-      <td>${pago.pacienteNombre || "-"}</td>
-      <td>${pago.tipoConsulta || "-"}</td>
-      <td>${pago.detalle || "-"}</td>
+      <td class="text-center">${pago.pacienteNombre || "-"}</td>
+      <td class="text-center">${pago.tipoConsulta || "-"}</td>
+      <td class="text-center">${pago.concepto || pago.detalle || "-"}</td>
     `;
     tablaCaja.appendChild(fila);
   });
@@ -1883,7 +2275,7 @@ function mostrarControlesPaginacionCaja() {
 function mostrarCaja() {
   mainContent.innerHTML = `
     <div class="row">
-      <div class="col-lg-8">
+      <div class="col-lg-9">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h1 class="mb-0">Caja diaria</h1>
           <button class="btn btn-primary" id="btnNuevoMovimiento">Nuevo Movimiento</button>
@@ -1903,6 +2295,10 @@ function mostrarCaja() {
                     <label for="fechaCajaModal" class="form-label">Fecha *</label>
                     <input type="date" id="fechaCajaModal" class="form-control" value="${hoy()}" required />
                     <div class="invalid-feedback">Por favor ingrese una fecha válida.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="horaCajaModal" class="form-label">Hora</label>
+                    <input type="time" id="horaCajaModal" class="form-control" />
                   </div>
                   <div class="mb-3">
                     <label for="montoCajaModal" class="form-label">Monto *</label>
@@ -1952,14 +2348,15 @@ function mostrarCaja() {
             </div>
 
             <div class="table-responsive">
-              <table class="table table-striped">
+              <table class="table table-striped" style="table-layout: fixed; width: 100%;">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
-                    <th>Monto</th>
-                    <th>Paciente</th>
-                    <th>Tipo Consulta</th>
-                    <th>Detalle</th>
+                    <th width="15%" class="text-center">Fecha</th>
+                    <th width="10%" class="text-center">Hora</th>
+                    <th width="15%" class="text-center">Monto</th>
+                    <th width="20%" class="text-center">Paciente</th>
+                    <th width="20%" class="text-center">Tipo Consulta</th>
+                    <th width="20%" class="text-center">Detalle</th>
                   </tr>
                 </thead>
                 <tbody id="tablaCaja"></tbody>
@@ -1969,7 +2366,7 @@ function mostrarCaja() {
         </div>
       </div>
 
-      <div class="col-lg-3 mx-auto" style="max-width: 300px; padding-left: 10px; padding-right: 10px;">
+      <div class="col-lg-3 mx-auto" style="max-width: 250px; padding-left: 10px; padding-right: 10px;">
         <div class="card mb-3">
           <div class="card-body">
             <h5 class="card-title">Movimientos</h5>
@@ -2041,13 +2438,13 @@ function mostrarCaja() {
   formCajaModal.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // Validación Bootstrap nativa
     if (!formCajaModal.checkValidity()) {
       formCajaModal.classList.add("was-validated");
       return;
     }
 
     const fecha = document.getElementById("fechaCajaModal").value;
+    const hora = document.getElementById("horaCajaModal").value || "--:--";
     const monto = parseFloat(document.getElementById("montoCajaModal").value);
     const pacienteNombre = document
       .getElementById("pacienteCajaModal")
@@ -2060,6 +2457,7 @@ function mostrarCaja() {
     try {
       await addDoc(collection(db, "caja"), {
         fecha,
+        hora,
         monto,
         pacienteNombre: pacienteNombre || "-",
         tipoConsulta: tipoConsulta || "-",
@@ -2068,7 +2466,7 @@ function mostrarCaja() {
       alert("Movimiento agregado.");
       formCajaModal.reset();
       formCajaModal.classList.remove("was-validated");
-      // Cerrar modal
+
       const modalInstance = bootstrap.Modal.getInstance(
         document.getElementById("modalNuevoMovimiento")
       );
@@ -2083,6 +2481,8 @@ function mostrarCaja() {
   cargarCaja();
 }
 
+// --- MANEJO DEL SIDEBAR ---
+// Iniciar mostrando Inicio
 // --- MANEJO DEL SIDEBAR ---
 // Iniciar mostrando Inicio
 mostrarInicio();
@@ -2109,5 +2509,6 @@ document.querySelectorAll("#sidebar a.nav-link").forEach((link) => {
     else if (seccion === "pacientes") mostrarGestionPacientes();
     else if (seccion === "turnos") mostrarAgendaTurnos();
     else if (seccion === "caja") mostrarCaja();
+    else if (seccion === "presupuestos") mostrarPresupuestos(); // <-- Agregado aquí
   });
 });

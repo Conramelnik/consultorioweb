@@ -113,6 +113,19 @@
             Recetas Médicas
           </button>
         </li>
+        <!-- NUEVA PESTAÑA PRESUPUESTOS -->
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="presupuestos-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#presupuestos"
+            type="button"
+            role="tab"
+          >
+            Presupuestos
+          </button>
+        </li>
       </ul>
 
       <div class="tab-content mt-3" id="fichaTabsContent">
@@ -234,6 +247,19 @@
           </button>
           <h5>Recetas anteriores</h5>
           <ul id="listaRecetas" class="list-group"></ul>
+        </div>
+
+        <!-- NUEVA TAB: PRESUPUESTOS -->
+        <div
+          class="tab-pane fade"
+          id="presupuestos"
+          role="tabpanel"
+          tabindex="0"
+        >
+          <div class="p-3">
+            <h5>Presupuestos del paciente</h5>
+            <div id="listaPresupuestosPaciente" class="mt-3"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -387,66 +413,119 @@
       }
 
       // Cargar turnos del paciente
-    // Cargar turnos del paciente
-async function cargarTurnos() {
-  const lista = document.getElementById("listaTurnosPaciente");
-  lista.innerHTML = "";
+      // Cargar turnos del paciente
+      async function cargarTurnos() {
+        // Función para cargar presupuestos del paciente y mostrarlos en la ficha
+        // Función para cargar presupuestos del paciente y mostrarlos en la ficha
 
-  try {
-    const q = query(collection(db, "turnos"), orderBy("fecha", "desc"));
-    const snapshot = await getDocs(q);
+        const lista = document.getElementById("listaTurnosPaciente");
+        lista.innerHTML = "";
 
-    const turnosPaciente = [];
+        try {
+          const q = query(collection(db, "turnos"), orderBy("fecha", "desc"));
+          const snapshot = await getDocs(q);
 
-    snapshot.forEach((docu) => {
-      const turno = docu.data();
-      if (String(turno.pacienteId) === idPacienteGlobal) {
-        turnosPaciente.push(turno);
-      }
-    });
+          const turnosPaciente = [];
 
-    if (turnosPaciente.length === 0) {
-      lista.innerHTML =
-        "<li class='list-group-item'>No hay turnos registrados.</li>";
-      return;
-    }
+          snapshot.forEach((docu) => {
+            const turno = docu.data();
+            if (String(turno.pacienteId) === idPacienteGlobal) {
+              turnosPaciente.push(turno);
+            }
+          });
 
-    turnosPaciente.forEach((turno) => {
-      const {
-        fecha = "-",
-        hora = "-",
-        tipoConsulta = "-",
-        estado = "",
-        asistio,
-        montoAbonado = 0,
-      } = turno;
+          if (turnosPaciente.length === 0) {
+            lista.innerHTML =
+              "<li class='list-group-item'>No hay turnos registrados.</li>";
+            return;
+          }
 
-      let estadoAMostrar = "";
+          turnosPaciente.forEach((turno) => {
+            const {
+              fecha = "-",
+              hora = "-",
+              tipoConsulta = "-",
+              estado = "",
+              asistio,
+              montoAbonado = 0,
+            } = turno;
 
-      if (estado && estado !== "") {
-        estadoAMostrar = estado; // "Cancelado", "Ausente", etc.
-      } else if (asistio === true) {
-        estadoAMostrar = "Asistió";
-      } else if (asistio === false) {
-        estadoAMostrar = "No asistió";
-      } else {
-        estadoAMostrar = "Sin estado";
-      }
+            let estadoAMostrar = "";
 
-      const li = document.createElement("li");
-      li.className = "list-group-item";
-      li.innerHTML = `
+            if (estado && estado !== "") {
+              estadoAMostrar = estado; // "Cancelado", "Ausente", etc.
+            } else if (asistio === true) {
+              estadoAMostrar = "Asistió";
+            } else if (asistio === false) {
+              estadoAMostrar = "No asistió";
+            } else {
+              estadoAMostrar = "Sin estado";
+            }
+
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerHTML = `
         <strong>${fecha} ${hora}</strong> - ${tipoConsulta}<br>
         Estado: ${estadoAMostrar}<br>
         Monto abonado: $${montoAbonado.toFixed(2)}
       `;
-      lista.appendChild(li);
-    });
-  } catch (error) {
-    lista.innerHTML = `<li class='list-group-item text-danger'>Error al cargar turnos.</li>`;
-    console.error("Error al cargar turnos:", error);
-  }
-}
+            lista.appendChild(li);
+          });
+        } catch (error) {
+          lista.innerHTML = `<li class='list-group-item text-danger'>Error al cargar turnos.</li>`;
+          console.error("Error al cargar turnos:", error);
+        }
+      }
+      async function cargarPresupuestosPaciente() {
+        const contenedor = document.getElementById("listaPresupuestosPaciente");
+        contenedor.innerHTML = "Cargando presupuestos...";
+
+        try {
+          const q = query(
+            collection(db, "presupuestos"),
+            orderBy("fechaCreacion", "desc") // Cambié a fechaCreacion, porque es el campo que tienes
+          );
+          const snapshot = await getDocs(q);
+
+          const presupuestos = [];
+          snapshot.forEach((docu) => {
+            const presupuesto = docu.data();
+            if (
+              String(presupuesto.pacienteId).trim() ===
+              String(idPacienteGlobal).trim()
+            ) {
+              presupuestos.push({ id: docu.id, ...presupuesto });
+            }
+          });
+
+          if (presupuestos.length === 0) {
+            contenedor.innerHTML =
+              "<p>No hay presupuestos registrados para este paciente.</p>";
+            return;
+          }
+
+          contenedor.innerHTML = ""; // limpio
+
+          presupuestos.forEach((presu) => {
+            const html = `
+        <div class="card mb-3 p-3">
+          <strong>Fecha:</strong> ${presu.fechaCreacion || "-"}<br>
+          <strong>Tratamiento:</strong> ${presu.tratamiento || "-"}<br>
+          <strong>Total:</strong> $${presu.total?.toFixed(2) || "0.00"}<br>
+          <strong>Cuotas:</strong> ${presu.cuotas || "-"}<br>
+          <strong>Monto por cuota:</strong> $${
+            presu.montoPorCuota?.toFixed(2) || "0.00"
+          }<br>
+          <strong>Estado:</strong> ${presu.estado || "Pendiente"}
+        </div>
+      `;
+            contenedor.insertAdjacentHTML("beforeend", html);
+          });
+        } catch (error) {
+          contenedor.innerHTML = `<p class="text-danger">Error al cargar presupuestos.</p>`;
+          console.error("Error al cargar presupuestos:", error);
+        }
+      }
 
       // Cargar pagos del paciente
       async function cargarPagos() {
@@ -495,6 +574,7 @@ async function cargarTurnos() {
           cargarNotas(),
           cargarPagos(),
           cargarImagenesPaciente(),
+          cargarPresupuestosPaciente(), // <--- agregalo acá
         ]);
       })();
 
