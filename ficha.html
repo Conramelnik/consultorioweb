@@ -36,10 +36,7 @@
         </button>
       </div>
 
-      <hr />
-
       <div id="infoPaciente" class="mb-4"></div>
-
       <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button
@@ -257,9 +254,202 @@
           tabindex="0"
         >
           <div class="p-3">
-            <h5>Presupuestos del paciente</h5>
-            <div id="listaPresupuestosPaciente" class="mt-3"></div>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h4 class="fw-bold text-primary mb-0">
+                PRESUPUESTOS DEL PACIENTE
+              </h4>
+        <button class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" id="btnAbrirNuevoPresupuesto">
+  + Nuevo Presupuesto
+</button>
+
+
+            </div>
+
+            <div id="listaPresupuestosPaciente" class="d-flex gap-3 flex-wrap">
+              <!-- Aquí se insertarán las cards de resumen y tabla dinámicamente -->
+            </div>
+
+            <!-- Modal para ingresar pago parcial -->
+            <div
+              class="modal fade"
+              id="modalPagoParcial"
+              tabindex="-1"
+              aria-labelledby="modalPagoParcialLabel"
+              aria-hidden="true"
+            >
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="modalPagoParcialLabel">
+                      Registrar Pago Parcial
+                    </h5>
+                    <button
+                      type="button"
+                      class="btn-close"
+                      data-bs-dismiss="modal"
+                      aria-label="Cerrar"
+                    ></button>
+                  </div>
+                  <div class="modal-body">
+                    <form id="formPagoParcial">
+                      <input type="hidden" id="inputPresupuestoId" />
+                      <input type="hidden" id="inputCuotaNumero" />
+                      <div class="mb-3">
+                        <label for="inputFechaPago" class="form-label"
+                          >Fecha de Pago</label
+                        >
+                        <input
+                          type="date"
+                          id="inputFechaPago"
+                          class="form-control"
+                          required
+                        />
+                      </div>
+                      <div class="mb-3">
+                        <label for="inputMontoPago" class="form-label"
+                          >Monto</label
+                        >
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          id="inputMontoPago"
+                          class="form-control"
+                          required
+                        />
+                      </div>
+                      <div class="mb-3">
+                        <label for="inputMetodoPago" class="form-label"
+                          >Método de Pago</label
+                        >
+                        <select
+                          id="inputMetodoPago"
+                          class="form-select"
+                          required
+                        >
+                          <option value="">Seleccione...</option>
+                          <option value="Efectivo">Efectivo</option>
+                          <option value="Tarjeta">Tarjeta</option>
+                          <option value="Transferencia">Transferencia</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-primary">
+                        Guardar Pago
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para crear nuevo presupuesto -->
+    <div
+      class="modal fade"
+      id="modalNuevoPresupuesto"
+      tabindex="-1"
+      aria-labelledby="modalNuevoPresupuestoLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="formNuevoPresupuesto">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalNuevoPresupuestoLabel">
+                Nuevo Presupuesto
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Cerrar"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <!-- Fecha -->
+              <div class="mb-3">
+                <label for="inputFechaPresupuesto" class="form-label"
+                  >Fecha</label
+                >
+                <input
+                  type="date"
+                  class="form-control"
+                  id="inputFechaPresupuesto"
+                  required
+                />
+              </div>
+
+              <!-- Tratamiento -->
+              <div class="mb-3">
+                <label for="inputTratamiento" class="form-label"
+                  >Tratamiento</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="inputTratamiento"
+                  required
+                />
+              </div>
+
+              <!-- Monto -->
+              <div class="mb-3">
+                <label for="inputMontoPresupuesto" class="form-label"
+                  >Monto Total</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  id="inputMontoPresupuesto"
+                  required
+                />
+              </div>
+
+              <!-- Cuotas -->
+              <div class="mb-3">
+                <label for="inputCuotas" class="form-label"
+                  >Cantidad de Cuotas</label
+                >
+                <input
+                  type="number"
+                  min="1"
+                  class="form-control"
+                  id="inputCuotas"
+                  required
+                />
+              </div>
+
+              <!-- Observaciones -->
+              <div class="mb-3">
+                <label for="inputObservaciones" class="form-label"
+                  >Observaciones</label
+                >
+                <textarea
+                  class="form-control"
+                  id="inputObservaciones"
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Guardar Presupuesto
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -279,6 +469,7 @@
         addDoc,
         orderBy,
         deleteDoc,
+        updateDoc, // <--- agregalo acá
       } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
       // Firebase Config
@@ -314,16 +505,20 @@
         nombrePaciente = paciente.nombre?.toLowerCase().trim() || "";
 
         document.getElementById("datosPaciente").innerHTML = `
-          <p><strong>Apellido:</strong> ${paciente.apellido || "-"}</p>
-          <p><strong>Nombre:</strong> ${paciente.nombre || "-"}</p>
-          <p><strong>DNI:</strong> ${paciente.dni || "-"}</p>
-          <p><strong>Teléfono:</strong> ${paciente.telefono || "-"}</p>
-          <p><strong>Dirección:</strong> ${paciente.direccion || "-"}</p>
-          <p><strong>Género:</strong> ${paciente.genero || "-"}</p>
-          <p><strong>Obra Social:</strong> ${paciente.obraSocial || "-"}</p>
-          <p><strong>Fecha Nac.:</strong> ${paciente.fechaNacimiento || "-"}</p>
-          <p><strong>Ingreso:</strong> ${paciente.fechaIngreso || "-"}</p>
-        `;
+                <p><strong>Apellido:</strong> ${paciente.apellido || "-"}</p>
+                <p><strong>Nombre:</strong> ${paciente.nombre || "-"}</p>
+                <p><strong>DNI:</strong> ${paciente.dni || "-"}</p>
+                <p><strong>Teléfono:</strong> ${paciente.telefono || "-"}</p>
+                <p><strong>Dirección:</strong> ${paciente.direccion || "-"}</p>
+                <p><strong>Género:</strong> ${paciente.genero || "-"}</p>
+                <p><strong>Obra Social:</strong> ${
+                  paciente.obraSocial || "-"
+                }</p>
+                <p><strong>Fecha Nac.:</strong> ${
+                  paciente.fechaNacimiento || "-"
+                }</p>
+                <p><strong>Ingreso:</strong> ${paciente.fechaIngreso || "-"}</p>
+              `;
       }
 
       // Función para cargar turnos en el select para notas clínicas
@@ -465,10 +660,10 @@
             const li = document.createElement("li");
             li.className = "list-group-item";
             li.innerHTML = `
-        <strong>${fecha} ${hora}</strong> - ${tipoConsulta}<br>
-        Estado: ${estadoAMostrar}<br>
-        Monto abonado: $${montoAbonado.toFixed(2)}
-      `;
+              <strong>${fecha} ${hora}</strong> - ${tipoConsulta}<br>
+              Estado: ${estadoAMostrar}<br>
+              Monto abonado: $${montoAbonado.toFixed(2)}
+            `;
             lista.appendChild(li);
           });
         } catch (error) {
@@ -478,12 +673,18 @@
       }
       async function cargarPresupuestosPaciente() {
         const contenedor = document.getElementById("listaPresupuestosPaciente");
-        contenedor.innerHTML = "Cargando presupuestos...";
+
+        // Mostrar spinner mientras carga
+        contenedor.innerHTML = `
+    <div class="d-flex justify-content-center align-items-center" style="height:150px;">
+      <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+      <span class="ms-2 fs-5 text-muted">Cargando presupuestos...</span>
+    </div>`;
 
         try {
           const q = query(
             collection(db, "presupuestos"),
-            orderBy("fechaCreacion", "desc") // Cambié a fechaCreacion, porque es el campo que tienes
+            orderBy("fechaCreacion", "desc")
           );
           const snapshot = await getDocs(q);
 
@@ -498,36 +699,299 @@
             }
           });
 
+          // Evento botón Nuevo Presupuesto (solo si está)
+          const btnNuevo = document.getElementById("btnNuevoPresupuestoFicha");
+          if (btnNuevo) {
+            btnNuevo.onclick = () => {
+              const inputNombre = document.getElementById(
+                "inputNombrePacientePresupuesto"
+              );
+              if (inputNombre) {
+                inputNombre.disabled = true;
+                const paciente = pacientesGlobal.find(
+                  (p) => p.id === idPacienteGlobal
+                );
+                if (paciente) {
+                  inputNombre.value = `${paciente.apellido}, ${paciente.nombre}`;
+                  inputNombre.dataset.pacienteId = paciente.id;
+                }
+              }
+              const modal = new bootstrap.Modal(
+                document.getElementById("modalNuevoPresupuesto")
+              );
+              modal.show();
+            };
+          }
+
+          // Si no hay presupuestos
           if (presupuestos.length === 0) {
-            contenedor.innerHTML =
-              "<p>No hay presupuestos registrados para este paciente.</p>";
+            contenedor.innerHTML = `
+        <div class="alert alert-info text-center" role="alert" style="font-size:1.1rem;">
+          No hay presupuestos registrados para este paciente.
+        </div>`;
             return;
           }
 
-          contenedor.innerHTML = ""; // limpio
+          // Limpiar contenedor para insertar las cards
+          contenedor.innerHTML = "";
 
           presupuestos.forEach((presu) => {
-            const html = `
-        <div class="card mb-3 p-3">
-          <strong>Fecha:</strong> ${presu.fechaCreacion || "-"}<br>
-          <strong>Tratamiento:</strong> ${presu.tratamiento || "-"}<br>
-          <strong>Total:</strong> $${presu.total?.toFixed(2) || "0.00"}<br>
-          <strong>Cuotas:</strong> ${presu.cuotas || "-"}<br>
-          <strong>Monto por cuota:</strong> $${
-            presu.montoPorCuota?.toFixed(2) || "0.00"
-          }<br>
-          <strong>Estado:</strong> ${presu.estado || "Pendiente"}
+            const {
+              id,
+              fechaCreacion = "-",
+              tratamiento = "-",
+              total = 0,
+              estado = "Pendiente",
+              pagos = [],
+            } = presu;
+
+            const totalPagado = pagos.reduce(
+              (acc, pago) => acc + (pago.monto || 0),
+              0
+            );
+            const saldoRestante = total - totalPagado;
+
+            let estadoMostrar = estado;
+            if (saldoRestante <= 0) {
+              estadoMostrar = "Pagado";
+            } else if (totalPagado > 0) {
+              estadoMostrar = "Parcial";
+            } else {
+              estadoMostrar = "Pendiente";
+            }
+
+            let tablaPagos = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="mb-0 fw-bold text-primary">Pagos realizados</h6>
+          <button id="btnRegistrarPago-${id}" class="btn btn-sm btn-success shadow-sm">
+            Registrar pago
+          </button>
         </div>
-      `;
+        <table class="table table-bordered table-hover table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width:30%;">Fecha de Pago</th>
+              <th scope="col" style="width:40%;">Método de Pago</th>
+              <th scope="col" style="width:30%;">Monto</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+            if (pagos.length === 0) {
+              tablaPagos += `
+            <tr>
+              <td colspan="3" class="text-center text-muted">No se registraron pagos aún.</td>
+            </tr>`;
+            } else {
+              pagos.forEach((pago) => {
+                tablaPagos += `
+            <tr>
+              <td>${pago.fechaPago || "-"}</td>
+              <td>${pago.metodoPago || "-"}</td>
+              <td>$${(pago.monto || 0).toFixed(2)}</td>
+            </tr>`;
+              });
+            }
+
+            tablaPagos += `</tbody></table>`;
+
+            const html = `
+        <div class="d-flex flex-wrap gap-4 mb-5" style="align-items: flex-start;">
+          <div class="card shadow-sm p-4 rounded" style="flex: 1 1 350px; min-width: 350px; max-width: 380px; font-size: 1.1rem; background: #f0f6ff;">
+            <h5 class="text-primary mb-3 fw-bold">Resumen del Presupuesto</h5>
+            <p><strong>Fecha:</strong> ${fechaCreacion}</p>
+            <p><strong>Tratamiento:</strong> ${tratamiento}</p>
+            <p><strong>Total:</strong> <span class="text-success fw-semibold">$${total.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Total pagado:</strong> <span class="text-info fw-semibold">$${totalPagado.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Saldo restante:</strong> <span class="text-danger fw-semibold">$${saldoRestante.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Estado:</strong> ${
+              estadoMostrar.toLowerCase() === "pendiente"
+                ? `<span class="badge bg-warning text-dark">${estadoMostrar}</span>`
+                : estadoMostrar.toLowerCase() === "parcial"
+                ? `<span class="badge bg-info text-white">${estadoMostrar}</span>`
+                : `<span class="badge bg-success">${estadoMostrar}</span>`
+            }</p>
+          </div>
+          <div class="card shadow-sm p-4 rounded flex-grow-2" style="min-width: 600px; max-width: 900px;">
+            ${tablaPagos}
+          </div>
+        </div>`;
+
             contenedor.insertAdjacentHTML("beforeend", html);
           });
+
+          // Eventos "Registrar pago"
+          presupuestos.forEach((presu) => {
+            const btn = document.getElementById(`btnRegistrarPago-${presu.id}`);
+            if (btn) {
+              btn.onclick = () => {
+                const modal = new bootstrap.Modal(
+                  document.getElementById("modalPagoParcial")
+                );
+                document.getElementById("inputPresupuestoId").value = presu.id;
+                const hoy = new Date().toISOString().split("T")[0];
+                document.getElementById("inputFechaPago").value = hoy;
+                document.getElementById("inputMontoPago").value = "";
+                document.getElementById("inputMetodoPago").value = "";
+                modal.show();
+              };
+            }
+          });
         } catch (error) {
-          contenedor.innerHTML = `<p class="text-danger">Error al cargar presupuestos.</p>`;
+          contenedor.innerHTML = `
+      <div class="alert alert-danger text-center" role="alert" style="font-size:1.1rem;">
+        Error al cargar presupuestos.
+      </div>`;
           console.error("Error al cargar presupuestos:", error);
         }
       }
 
-      // Cargar pagos del paciente
+      document
+        .getElementById("formPagoParcial")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const presupuestoId =
+            document.getElementById("inputPresupuestoId").value;
+          const fechaPago = document.getElementById("inputFechaPago").value;
+          const montoPago = parseFloat(
+            document.getElementById("inputMontoPago").value
+          );
+          const metodoPago = document.getElementById("inputMetodoPago").value;
+
+          if (!presupuestoId) {
+            alert("No se especificó presupuesto.");
+            return;
+          }
+          if (!fechaPago || isNaN(montoPago) || montoPago <= 0 || !metodoPago) {
+            alert("Por favor, complete todos los campos correctamente.");
+            return;
+          }
+
+          try {
+            const presupuestoRef = doc(db, "presupuestos", presupuestoId);
+            const presupuestoSnap = await getDoc(presupuestoRef);
+            if (!presupuestoSnap.exists()) {
+              alert("Presupuesto no encontrado.");
+              return;
+            }
+
+            const presupuestoData = presupuestoSnap.data();
+            const pagosActuales = presupuestoData.pagos || [];
+
+            const nuevoPago = {
+              fechaPago,
+              monto: montoPago,
+              metodoPago,
+              fechaRegistro: new Date().toISOString(),
+            };
+
+            pagosActuales.push(nuevoPago);
+
+            // Calcular nuevo estado:
+            const total = presupuestoData.total || 0;
+            const totalPagado = pagosActuales.reduce(
+              (acc, p) => acc + (p.monto || 0),
+              0
+            );
+            const saldoRestante = total - totalPagado;
+            const nuevoEstado =
+              saldoRestante <= 0
+                ? "Pagado"
+                : totalPagado > 0
+                ? "Parcial"
+                : "Pendiente";
+
+            await updateDoc(presupuestoRef, {
+              pagos: pagosActuales,
+              estado: nuevoEstado,
+            });
+
+            const modalEl = document.getElementById("modalPagoParcial");
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            await cargarPresupuestosPaciente();
+          } catch (error) {
+            console.error("Error al guardar pago parcial:", error);
+            alert("Error al guardar el pago. Intente nuevamente.");
+          }
+        });
+
+      document
+        .getElementById("formPagoParcial")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const presupuestoId =
+            document.getElementById("inputPresupuestoId").value;
+          const cuotaNumero = document.getElementById("inputCuotaNumero").value;
+          const fechaPago = document.getElementById("inputFechaPago").value;
+          const montoPago = parseFloat(
+            document.getElementById("inputMontoPago").value
+          );
+          const metodoPago = document.getElementById("inputMetodoPago").value;
+
+          if (!presupuestoId) {
+            alert("No se especificó presupuesto.");
+            return;
+          }
+          if (!fechaPago || isNaN(montoPago) || montoPago <= 0 || !metodoPago) {
+            alert("Por favor, complete todos los campos correctamente.");
+            return;
+          }
+
+          try {
+            const presupuestoRef = doc(db, "presupuestos", presupuestoId);
+            const presupuestoSnap = await getDoc(presupuestoRef);
+            if (!presupuestoSnap.exists()) {
+              alert("Presupuesto no encontrado.");
+              return;
+            }
+
+            const presupuestoData = presupuestoSnap.data();
+            const cuotas = presupuestoData.cuotas || 1;
+
+            const nuevoPago = {
+              cuotaNumero: cuotaNumero ? parseInt(cuotaNumero) : null,
+              fechaPago,
+              monto: montoPago,
+              metodoPago,
+              fechaRegistro: new Date().toISOString(),
+            };
+
+            const pagosActuales = presupuestoData.pagos || [];
+            pagosActuales.push(nuevoPago);
+
+            const cuotasPagadas = [
+              ...new Set(pagosActuales.map((p) => p.cuotaNumero)),
+            ].length;
+
+            const nuevoEstado =
+              cuotasPagadas >= cuotas ? "Pagado" : "Pendiente";
+
+            await updateDoc(presupuestoRef, {
+              pagos: pagosActuales,
+              estado: nuevoEstado,
+            });
+
+            const modalEl = document.getElementById("modalPagoParcial");
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            cargarPresupuestosPaciente();
+          } catch (error) {
+            console.error("Error al guardar pago parcial:", error);
+            alert("Error al guardar el pago. Intente nuevamente.");
+          }
+        });
+
       async function cargarPagos() {
         const snapshot = await getDocs(collection(db, "caja"));
         const lista = document.getElementById("listaPagosPaciente");
@@ -574,7 +1038,7 @@
           cargarNotas(),
           cargarPagos(),
           cargarImagenesPaciente(),
-          cargarPresupuestosPaciente(), // <--- agregalo acá
+          cargarPresupuestosPaciente(),
         ]);
       })();
 
@@ -608,7 +1072,6 @@
         .getElementById("btnRefrescarFicha")
         .addEventListener("click", async () => {
           await refrescarFicha();
-          alert("Ficha actualizada");
         });
 
       // ----------- IMÁGENES Y PLACAS con Cloudinary -----------
@@ -702,31 +1165,33 @@
             col.style.position = "relative";
 
             col.innerHTML = `
-        <div class="card mb-3">
-          <img src="${
-            img.url
-          }" class="card-img-top" alt="Imagen del paciente" style="cursor:pointer;" />
-          <div class="card-body">
-            <p class="card-text">${img.descripcion || "(Sin descripción)"}</p>
-            <small class="text-muted">${new Date(
-              img.fecha
-            ).toLocaleString()}</small>
-          </div>
-          <button class="btn btn-danger btn-sm btn-eliminar-imagen" style="
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            padding: 0;
-            line-height: 22px;
-            font-weight: bold;
-            text-align: center;
-            cursor: pointer;
-          ">×</button>
-        </div>
-      `;
+              <div class="card mb-3">
+                <img src="${
+                  img.url
+                }" class="card-img-top" alt="Imagen del paciente" style="cursor:pointer;" />
+                <div class="card-body">
+                  <p class="card-text">${
+                    img.descripcion || "(Sin descripción)"
+                  }</p>
+                  <small class="text-muted">${new Date(
+                    img.fecha
+                  ).toLocaleString()}</small>
+                </div>
+                <button class="btn btn-danger btn-sm btn-eliminar-imagen" style="
+                  position: absolute;
+                  top: 5px;
+                  right: 5px;
+                  border-radius: 50%;
+                  width: 25px;
+                  height: 25px;
+                  padding: 0;
+                  line-height: 22px;
+                  font-weight: bold;
+                  text-align: center;
+                  cursor: pointer;
+                ">×</button>
+              </div>
+            `;
 
             col.querySelector("img").addEventListener("click", () => {
               document.getElementById("imagenModal").src = img.url;
@@ -822,6 +1287,238 @@
         escala = 1;
         imagenModal.style.transform = "scale(1)";
       });
+
+      // Crear instancia del modal
+      const modalNuevoPresupuesto = new bootstrap.Modal(
+        document.getElementById("modalNuevoPresupuesto")
+      );
+
+      // Evento para abrir modal y preparar formulario
+      document
+        .getElementById("btnAbrirNuevoPresupuesto")
+        .addEventListener("click", () => {
+          // Colocar fecha actual por defecto
+          const hoy = new Date().toISOString().split("T")[0];
+          document.getElementById("inputFechaPresupuesto").value = hoy;
+
+          // Limpiar campos
+          document.getElementById("inputTratamiento").value = "";
+          document.getElementById("inputMontoPresupuesto").value = "";
+          document.getElementById("inputCuotas").value = "1";
+          document.getElementById("inputObservaciones").value = "";
+
+          modalNuevoPresupuesto.show();
+        });
+
+      // Evento submit del formulario
+      document
+        .getElementById("formNuevoPresupuesto")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          // Tomar valores del formulario
+          const fecha = document.getElementById("inputFechaPresupuesto").value;
+          const tratamiento = document
+            .getElementById("inputTratamiento")
+            .value.trim();
+          const monto = parseFloat(
+            document.getElementById("inputMontoPresupuesto").value
+          );
+          const cuotas = parseInt(document.getElementById("inputCuotas").value);
+          const observaciones = document
+            .getElementById("inputObservaciones")
+            .value.trim();
+
+          // Validar
+          if (
+            !fecha ||
+            !tratamiento ||
+            isNaN(monto) ||
+            monto <= 0 ||
+            isNaN(cuotas) ||
+            cuotas < 1
+          ) {
+            alert(
+              "Por favor, complete correctamente todos los campos obligatorios."
+            );
+            return;
+          }
+
+          // Aquí pones tu lógica para guardar en Firebase o donde corresponda
+          try {
+            await addDoc(collection(db, "presupuestos"), {
+              pacienteId: idPacienteGlobal, // <-- aquí cambia idPaciente por pacienteId
+              fechaCreacion: fecha,
+              tratamiento,
+              total: monto,
+              cuotas,
+              observaciones,
+              estado: "Pendiente",
+              pagos: [],
+              fechaRegistro: new Date().toISOString(),
+            });
+
+            alert("Presupuesto creado con éxito.");
+            modalNuevoPresupuesto.hide();
+            // Recarga tus presupuestos o refresca ficha
+            cargarPresupuestosPaciente();
+          } catch (error) {
+            console.error("Error al crear presupuesto:", error);
+            alert("Error al guardar el presupuesto. Intenta nuevamente.");
+          }
+        });
+
+      async function cargarPresupuestosPacienteModal(idPaciente) {
+        const contenedor = document.getElementById("listaPresupuestosPaciente");
+
+        // Mostrar spinner mientras carga
+        contenedor.innerHTML = `
+    <div class="d-flex justify-content-center align-items-center" style="height:150px;">
+      <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+      <span class="ms-2 fs-5 text-muted">Cargando presupuestos del paciente...</span>
+    </div>`;
+
+        try {
+          const q = query(
+            collection(db, "presupuestos"),
+            where("idPaciente", "==", idPaciente), // Cambiado aquí
+            orderBy("fechaRegistro", "desc") // Cambiado aquí
+          );
+          const snapshot = await getDocs(q);
+
+          const presupuestos = [];
+          snapshot.forEach((docu) => {
+            presupuestos.push({ id: docu.id, ...docu.data() });
+          });
+
+          if (presupuestos.length === 0) {
+            contenedor.innerHTML = `
+        <div class="alert alert-info text-center" role="alert" style="font-size:1.1rem;">
+          No hay presupuestos registrados para este paciente.
+        </div>`;
+            return;
+          }
+
+          contenedor.innerHTML = "";
+
+          presupuestos.forEach((presu) => {
+            const {
+              id,
+              fechaRegistro: fechaCreacion = "-",
+              tratamiento = "-",
+              total = 0,
+              estado = "Pendiente",
+              pagos = [],
+            } = presu;
+
+            const totalPagado = pagos.reduce(
+              (acc, pago) => acc + (pago.monto || 0),
+              0
+            );
+            const saldoRestante = total - totalPagado;
+
+            let estadoMostrar = estado;
+            if (saldoRestante <= 0) {
+              estadoMostrar = "Pagado";
+            } else if (totalPagado > 0) {
+              estadoMostrar = "Parcial";
+            } else {
+              estadoMostrar = "Pendiente";
+            }
+
+            let tablaPagos = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="mb-0 fw-bold text-primary">Pagos realizados</h6>
+          <button id="btnRegistrarPago-${id}" class="btn btn-sm btn-success shadow-sm">
+            Registrar pago
+          </button>
+        </div>
+        <table class="table table-bordered table-hover table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width:30%;">Fecha de Pago</th>
+              <th scope="col" style="width:40%;">Método de Pago</th>
+              <th scope="col" style="width:30%;">Monto</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+            if (pagos.length === 0) {
+              tablaPagos += `
+          <tr>
+            <td colspan="3" class="text-center text-muted">No se registraron pagos aún.</td>
+          </tr>`;
+            } else {
+              pagos.forEach((pago) => {
+                tablaPagos += `
+            <tr>
+              <td>${pago.fechaPago || "-"}</td>
+              <td>${pago.metodoPago || "-"}</td>
+              <td>$${(pago.monto || 0).toFixed(2)}</td>
+            </tr>`;
+              });
+            }
+
+            tablaPagos += `</tbody></table>`;
+
+            const html = `
+        <div class="d-flex flex-wrap gap-4 mb-5" style="align-items: flex-start;">
+          <div class="card shadow-sm p-4 rounded" style="flex: 1 1 350px; min-width: 350px; max-width: 380px; font-size: 1.1rem; background: #f0f6ff;">
+            <h5 class="text-primary mb-3 fw-bold">Resumen del Presupuesto</h5>
+            <p><strong>Fecha:</strong> ${fechaCreacion}</p>
+            <p><strong>Tratamiento:</strong> ${tratamiento}</p>
+            <p><strong>Total:</strong> <span class="text-success fw-semibold">$${total.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Total pagado:</strong> <span class="text-info fw-semibold">$${totalPagado.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Saldo restante:</strong> <span class="text-danger fw-semibold">$${saldoRestante.toFixed(
+              2
+            )}</span></p>
+            <p><strong>Estado:</strong> ${
+              estadoMostrar.toLowerCase() === "pendiente"
+                ? `<span class="badge bg-warning text-dark">${estadoMostrar}</span>`
+                : estadoMostrar.toLowerCase() === "parcial"
+                ? `<span class="badge bg-info text-white">${estadoMostrar}</span>`
+                : `<span class="badge bg-success">${estadoMostrar}</span>`
+            }</p>
+          </div>
+          <div class="card shadow-sm p-4 rounded flex-grow-2" style="min-width: 600px; max-width: 900px;">
+            ${tablaPagos}
+          </div>
+        </div>`;
+
+            contenedor.insertAdjacentHTML("beforeend", html);
+          });
+
+          // Eventos para botones "Registrar pago"
+          presupuestos.forEach((presu) => {
+            const btn = document.getElementById(`btnRegistrarPago-${presu.id}`);
+            if (btn) {
+              btn.onclick = () => {
+                const modal = new bootstrap.Modal(
+                  document.getElementById("modalPagoParcial")
+                );
+                document.getElementById("inputPresupuestoId").value = presu.id;
+                const hoy = new Date().toISOString().split("T")[0];
+                document.getElementById("inputFechaPago").value = hoy;
+                document.getElementById("inputMontoPago").value = "";
+                document.getElementById("inputMetodoPago").value = "";
+                modal.show();
+              };
+            }
+          });
+        } catch (error) {
+          contenedor.innerHTML = `
+      <div class="alert alert-danger text-center" role="alert" style="font-size:1.1rem;">
+        Error al cargar presupuestos del paciente.
+      </div>`;
+          console.error("Error al cargar presupuestos del paciente:", error);
+        }
+      }
+
+      cargarPresupuestosPacienteModal(idPacienteGlobal);
     </script>
   </body>
 </html>
