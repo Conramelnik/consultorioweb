@@ -14,7 +14,10 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
       rel="stylesheet"
     />
-
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <!-- FullCalendar CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css"
@@ -40,8 +43,54 @@
         overflow-y: auto;
       }
     </style>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
   </head>
   <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <!-- Logo a la izquierda -->
+        <a class="navbar-brand fw-bold" href="#">ConsultoriosApp</a>
+
+        <!-- Botón hamburguesa para móvil -->
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Opciones a la derecha -->
+        <div
+          class="collapse navbar-collapse justify-content-end"
+          id="navbarNav"
+        >
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link active" href="#">Inicio</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Servicios</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Contacto</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="login.html">Login</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
     <div class="d-flex vh-100">
       <!-- Sidebar -->
       <nav id="sidebar" class="bg-light border-end p-3">
@@ -64,6 +113,11 @@
           </li>
           <li class="nav-item mb-2">
             <a href="#" class="nav-link" data-section="caja">Caja</a>
+          </li>
+          <li class="nav-item mb-2">
+            <a href="#" class="nav-link" data-section="estadisticas"
+              >Estadísticas</a
+            >
           </li>
         </ul>
       </nav>
@@ -856,8 +910,85 @@
       </div>
     </div>
 
+    <footer class="bg-primary text-white py-3">
+      <div class="container text-md-left">
+        <div class="row">
+          <!-- Contacto -->
+          <div class="col-md-4 col-lg-4 col-xl-3 mx-auto mb-3">
+            <h5 class="text-uppercase fw-bold mb-3">ConsultoriosApp</h5>
+            <p class="mb-1">Tu salud, nuestra prioridad.</p>
+            <p class="mb-1">
+              <i class="fas fa-map-marker-alt me-2"></i>Av. Siempre Viva 123,
+              Ciudad
+            </p>
+            <p class="mb-1">
+              <i class="fas fa-phone me-2"></i>+54 9 11 1234-5678
+            </p>
+            <p class="mb-0">
+              <i class="fas fa-envelope me-2"></i>contacto@consultoriosapp.com
+            </p>
+          </div>
+
+          <!-- Enlaces Rápidos -->
+          <div class="col-md-3 col-lg-2 col-xl-2 mx-auto mb-3">
+            <h6 class="text-uppercase fw-bold mb-3">Enlaces</h6>
+            <p class="mb-1">
+              <a href="#" class="text-white text-decoration-none">Inicio</a>
+            </p>
+            <p class="mb-1">
+              <a href="#" class="text-white text-decoration-none">Servicios</a>
+            </p>
+            <p class="mb-1">
+              <a href="#" class="text-white text-decoration-none">Nosotros</a>
+            </p>
+            <p class="mb-0">
+              <a href="#" class="text-white text-decoration-none">Contacto</a>
+            </p>
+          </div>
+
+          <!-- Redes Sociales -->
+          <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mb-0">
+            <h6 class="text-uppercase fw-bold mb-3">Redes Sociales</h6>
+            <a
+              href="#"
+              class="btn btn-outline-light btn-sm btn-floating m-1"
+              role="button"
+              ><i class="fab fa-facebook-f"></i
+            ></a>
+            <a
+              href="#"
+              class="btn btn-outline-light btn-sm btn-floating m-1"
+              role="button"
+              ><i class="fab fa-twitter"></i
+            ></a>
+            <a
+              href="#"
+              class="btn btn-outline-light btn-sm btn-floating m-1"
+              role="button"
+              ><i class="fab fa-instagram"></i
+            ></a>
+            <a
+              href="#"
+              class="btn btn-outline-light btn-sm btn-floating m-1"
+              role="button"
+              ><i class="fab fa-linkedin-in"></i
+            ></a>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="text-center p-2"
+        style="background-color: rgba(0, 0, 0, 0.15); font-size: 0.9rem"
+      >
+        © 2025 ConsultoriosApp. Todos los derechos reservados.
+      </div>
+    </footer>
+
     <!-- Tu script principal -->
     <script type="module" src="script.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

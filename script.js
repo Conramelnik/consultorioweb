@@ -24,6 +24,12 @@ import {
   orderBy,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
 // Configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAQwEe9C-ruCZ6TX612zA6FhkxZUJ2rVoc",
@@ -1915,82 +1921,107 @@ async function mostrarAgendaTurnos() {
   cargarPacientesSelect();
   cargarTurnosPaginados();
 
-  const horaTurno = document.getElementById("horaTurno");
-  const minutosTurno = document.getElementById("minutosTurno");
-  const fechaTurno = document.getElementById("fechaTurno");
+ const horaTurno = document.getElementById("horaTurno");
+const minutosTurno = document.getElementById("minutosTurno");
+const fechaTurno = document.getElementById("fechaTurno");
 
-  // Horas y minutos fijos
-  const horas = Array.from({ length: 15 }, (_, i) =>
-    (i + 7).toString().padStart(2, "0")
-  );
-  const minutos = ["00", "15", "30", "45"];
+// Horas y minutos fijos
+const horas = Array.from({ length: 15 }, (_, i) => (i + 7).toString().padStart(2, "0"));
+const minutos = ["00", "15", "30", "45"];
 
-  fechaTurno.addEventListener("change", async () => {
-    const fecha = fechaTurno.value;
-    if (!fecha) return;
+fechaTurno.addEventListener("change", async () => {
+  const fecha = fechaTurno.value;
+  if (!fecha) return;
 
-    const turnosSnapshot = await getDocs(collection(db, "turnos"));
-    const turnosDia = [];
+  const turnosSnapshot = await getDocs(collection(db, "turnos"));
+  const horasDisponibles = new Set(horas);
 
-    turnosSnapshot.forEach((doc) => {
-      const t = doc.data();
-      if (t.fecha === fecha) turnosDia.push(t.hora);
-    });
+  // Limpiar minutos hasta que se elija hora
+  minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
 
-    horaTurno.innerHTML = `<option value="" disabled selected>Hora</option>`;
-    horas.forEach((h) => {
-      const minutosDisponibles = minutos.filter(
-        (m) => !turnosDia.includes(`${h}:${m}`)
-      );
-      if (minutosDisponibles.length > 0) {
-        const opt = document.createElement("option");
-        opt.value = h;
-        opt.textContent = h;
-        horaTurno.appendChild(opt);
-      }
-    });
+  turnosSnapshot.forEach((doc) => {
+    const t = doc.data();
+    if (t.fecha !== fecha) return;
 
-    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+    const inicio = new Date(`${t.fecha}T${t.hora}`);
+    const duracion = Number(t.duracionMinutos) || 15;
+    const fin = new Date(inicio.getTime() + duracion * 60000);
+
+    // Marcar como ocupadas las horas completas si tienen minutos solapados
+    let bloque = new Date(inicio);
+    while (bloque < fin) {
+      const h = bloque.getHours().toString().padStart(2, "0");
+      horasDisponibles.add(h); // Nos aseguramos de que estén todas (en caso de errores previos)
+      bloque = new Date(bloque.getTime() + 15 * 60000);
+    }
   });
 
-  horaTurno.addEventListener("change", async () => {
-    const horaSeleccionada = horaTurno.value;
-    const fecha = fechaTurno.value;
-    if (!horaSeleccionada || !fecha) return;
+  // Renderizar las horas disponibles (en todas las horas va a filtrar después los minutos)
+  horaTurno.innerHTML = `<option value="" disabled selected>Hora</option>`;
+  horas.forEach((h) => {
+    const opt = document.createElement("option");
+    opt.value = h;
+    opt.textContent = h;
+    horaTurno.appendChild(opt);
+  });
+});
 
-    const turnosSnapshot = await getDocs(collection(db, "turnos"));
-    const turnosHora = [];
+horaTurno.addEventListener("change", async () => {
+  const horaSeleccionada = horaTurno.value;
+  const fecha = fechaTurno.value;
+  if (!horaSeleccionada || !fecha) return;
 
-    turnosSnapshot.forEach((doc) => {
-      const t = doc.data();
-      if (t.fecha === fecha && t.hora.startsWith(horaSeleccionada)) {
-        turnosHora.push(t.hora.split(":")[1]);
+  const turnosSnapshot = await getDocs(collection(db, "turnos"));
+  const minutosOcupados = new Set();
+
+  turnosSnapshot.forEach((doc) => {
+    const t = doc.data();
+    if (t.fecha !== fecha) return;
+
+    const duracion = Number(t.duracionMinutos) || 15;
+    const inicio = new Date(`${t.fecha}T${t.hora}`);
+    const fin = new Date(inicio.getTime() + duracion * 60000);
+
+    let bloque = new Date(inicio);
+    while (bloque < fin) {
+      const h = bloque.getHours().toString().padStart(2, "0");
+      const m = bloque.getMinutes().toString().padStart(2, "0");
+      if (h === horaSeleccionada) {
+        minutosOcupados.add(m);
       }
-    });
-
-    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
-    minutos.forEach((m) => {
-      if (!turnosHora.includes(m)) {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        minutosTurno.appendChild(opt);
-      }
-    });
+      bloque = new Date(bloque.getTime() + 15 * 60000);
+    }
   });
 
-  document.getElementById("formTurno").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // Renderizar minutos disponibles
+  minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+  minutos.forEach((m) => {
+    if (!minutosOcupados.has(m)) {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      minutosTurno.appendChild(opt);
+    }
+  });
 
+  if (minutosTurno.options.length === 1) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Sin minutos disponibles";
+    minutosTurno.appendChild(opt);
+  }
+});
+
+document.getElementById("formTurno").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  try {
     const fecha = fechaTurno.value;
     const hora = horaTurno.value;
     const minuto = minutosTurno.value;
     const pacienteId = document.getElementById("pacienteSelect").value;
     const tipoConsulta = document.getElementById("tipoConsulta").value;
-    const duracion = parseInt(
-      document.getElementById("duracionTurno").value,
-      10
-    );
+    const duracion = parseInt(document.getElementById("duracionTurno").value, 10);
 
     if (!fecha || !hora || !minuto || !pacienteId || isNaN(duracion)) {
       alert("Completá todos los campos obligatorios.");
@@ -1999,49 +2030,61 @@ async function mostrarAgendaTurnos() {
 
     const horaCompleta = `${hora}:${minuto}`;
 
-    try {
-      const turnosSnapshot = await getDocs(collection(db, "turnos"));
-      let ocupado = false;
-      turnosSnapshot.forEach((doc) => {
-        const t = doc.data();
-        if (t.fecha === fecha && t.hora === horaCompleta) {
-          ocupado = true;
-        }
-      });
+    // Validar superposición al guardar (doble chequeo)
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const inicioNuevo = new Date(`${fecha}T${horaCompleta}`);
+    const finNuevo = new Date(inicioNuevo.getTime() + duracion * 60000);
 
-      if (ocupado) {
-        alert("Ese turno ya está ocupado.");
-        return;
+    let superpuesto = false;
+    turnosSnapshot.forEach((doc) => {
+      const t = doc.data();
+      if (t.fecha !== fecha) return;
+
+      const inicioExistente = new Date(`${t.fecha}T${t.hora}`);
+      const duracionExistente = Number(t.duracionMinutos) || 15;
+      const finExistente = new Date(inicioExistente.getTime() + duracionExistente * 60000);
+
+      if (inicioNuevo < finExistente && finNuevo > inicioExistente) {
+        superpuesto = true;
       }
+    });
 
-      const pacienteDoc = await getDoc(doc(db, "pacientes", pacienteId));
-      if (!pacienteDoc.exists()) {
-        alert("Paciente no encontrado.");
-        return;
-      }
-
-      const paciente = pacienteDoc.data();
-
-      await addDoc(collection(db, "turnos"), {
-        fecha,
-        hora: horaCompleta,
-        pacienteId,
-        pacienteNombre: `${paciente.apellido} ${paciente.nombre}`,
-        tipoConsulta,
-        duracionMinutos: duracion,
-        asistio: false,
-        cancelado: false,
-        ausente: false,
-        montoAbonado: 0,
-      });
-
-      alert("Turno agregado correctamente.");
-      e.target.reset();
-      cargarTurnosPaginados();
-    } catch (error) {
-      alert("Error al agregar el turno: " + error.message);
+    if (superpuesto) {
+      alert("Ese horario se superpone con otro turno.");
+      return;
     }
-  });
+
+    const pacienteDoc = await getDoc(doc(db, "pacientes", pacienteId));
+    if (!pacienteDoc.exists()) {
+      alert("Paciente no encontrado.");
+      return;
+    }
+
+    const paciente = pacienteDoc.data();
+
+    await addDoc(collection(db, "turnos"), {
+      fecha,
+      hora: horaCompleta,
+      pacienteId,
+      pacienteNombre: `${paciente.apellido} ${paciente.nombre}`,
+      tipoConsulta,
+      duracionMinutos: duracion,
+      asistio: false,
+      cancelado: false,
+      ausente: false,
+      montoAbonado: 0,
+    });
+
+    alert("Turno guardado correctamente.");
+    e.target.reset();
+    cargarTurnosPaginados();
+  } catch (error) {
+    console.error("Error al agregar el turno:", error);
+    alert("Error al agregar el turno: " + error.message);
+  }
+});
+
+
 
   // --- FILTROS ---
   // Reemplazamos este bloque por el siguiente:
@@ -2127,6 +2170,8 @@ const cajaPorPagina = 10;
 
 // --- GESTIÓN CAJA ---
 
+let pacientesGlobalCaja = []; // lista de pacientes cargada para autocompletar en Caja
+
 // Función auxiliar para obtener lunes y sábado de la semana de una fecha YYYY-MM-DD
 function calcularSemana(fechaStr) {
   const fecha = new Date(fechaStr);
@@ -2137,7 +2182,6 @@ function calcularSemana(fechaStr) {
   const sabado = new Date(lunes);
   sabado.setDate(lunes.getDate() + 5);
 
-  // Formatear a YYYY-MM-DD
   function formatDate(d) {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -2146,6 +2190,26 @@ function calcularSemana(fechaStr) {
   }
 
   return { desde: formatDate(lunes), hasta: formatDate(sabado) };
+}
+
+// Nueva función para cargar pacientes para el datalist en caja
+async function cargarPacientesCaja() {
+  pacientesGlobalCaja = [];
+  try {
+    const pacientesSnap = await getDocs(collection(db, "pacientes"));
+    pacientesSnap.forEach((doc) => {
+      const p = doc.data();
+      pacientesGlobalCaja.push({
+        id: doc.id,
+        nombreCompleto: (p.apellido + " " + p.nombre).toLowerCase().trim(),
+        apellido: p.apellido.toLowerCase().trim(),
+        nombre: p.nombre.toLowerCase().trim(),
+        display: p.apellido + ", " + p.nombre,
+      });
+    });
+  } catch (error) {
+    alert("Error al cargar pacientes para Caja: " + error.message);
+  }
 }
 
 async function cargarCaja(filtroDesde = "", filtroHasta = "") {
@@ -2169,13 +2233,14 @@ async function cargarCaja(filtroDesde = "", filtroHasta = "") {
       }
     });
 
-    // Ordenar por fecha y hora ascendente (más antiguo primero)
+    // Ordenar por fecha y hora ascendente
     cajaMovimientosFiltrados.sort((a, b) => {
       const fechaHoraA = new Date(a.fecha + "T" + (a.hora || "00:00"));
       const fechaHoraB = new Date(b.fecha + "T" + (b.hora || "00:00"));
       return fechaHoraA - fechaHoraB;
     });
 
+    // Actualizar resumen estadístico
     const resumenIngresos = document.getElementById("resumenIngresos");
     const resumenEgresos = document.getElementById("resumenEgresos");
     const resumenSaldo = document.getElementById("resumenSaldo");
@@ -2207,18 +2272,31 @@ function mostrarPaginaCaja() {
   const paginaItems = cajaMovimientosFiltrados.slice(inicio, fin);
 
   paginaItems.forEach((pago) => {
+    // Mostrar tipoMovimiento (Ingreso/Egreso)
+    const tipoMovimiento =
+      pago.tipoMovimiento || (pago.monto >= 0 ? "Ingreso" : "Egreso");
+
+    // Para egresos ocultamos paciente y tipoConsulta (o mostrar '-')
+    const pacienteMostrar =
+      tipoMovimiento === "Ingreso" ? pago.pacienteNombre || "-" : "-";
+    const tipoConsultaMostrar =
+      tipoMovimiento === "Ingreso" ? pago.tipoConsulta || "-" : "-";
+
+    // Color del monto según tipo
+    const montoClase =
+      tipoMovimiento === "Ingreso" ? "text-success" : "text-danger";
+
     const fila = document.createElement("tr");
     fila.innerHTML = `
       <td class="text-center">${pago.fecha || "-"}</td>
       <td class="text-center">${pago.hora || "--:--"}</td>
-      <td class="fw-bold text-center ${
-        pago.monto >= 0 ? "text-success" : "text-danger"
-      }">
-        $${pago.monto.toFixed(2)}
+      <td class="fw-bold text-center ${montoClase}">
+        $${Math.abs(pago.monto).toFixed(2)}
       </td>
-      <td class="text-center">${pago.pacienteNombre || "-"}</td>
-      <td class="text-center">${pago.tipoConsulta || "-"}</td>
-      <td class="text-center">${pago.concepto || pago.detalle || "-"}</td>
+      <td class="text-center">${pacienteMostrar}</td>
+      <td class="text-center">${tipoConsultaMostrar}</td>
+      <td class="text-center">${pago.detalle || "-"}</td>
+      <td class="text-center">${tipoMovimiento}</td>
     `;
     tablaCaja.appendChild(fila);
   });
@@ -2272,7 +2350,10 @@ function mostrarControlesPaginacionCaja() {
   if (tablaResponsive) tablaResponsive.appendChild(paginacionDiv);
 }
 
-function mostrarCaja() {
+async function mostrarCaja() {
+  // Primero cargar pacientes para autocompletar
+  await cargarPacientesCaja();
+
   mainContent.innerHTML = `
     <div class="row">
       <div class="col-lg-9">
@@ -2301,15 +2382,24 @@ function mostrarCaja() {
                     <input type="time" id="horaCajaModal" class="form-control" />
                   </div>
                   <div class="mb-3">
+                    <label for="tipoMovimientoCajaModal" class="form-label">Tipo de Movimiento *</label>
+                    <select id="tipoMovimientoCajaModal" class="form-select" required>
+                      <option value="Ingreso" selected>Ingreso</option>
+                      <option value="Egreso">Egreso</option>
+                    </select>
+                    <div class="invalid-feedback">Seleccione el tipo de movimiento.</div>
+                  </div>
+                  <div class="mb-3">
                     <label for="montoCajaModal" class="form-label">Monto *</label>
-                    <input type="number" id="montoCajaModal" class="form-control" required />
-                    <div class="invalid-feedback">Por favor ingrese un monto válido.</div>
+                    <input type="number" id="montoCajaModal" class="form-control" required min="0.01" step="0.01" />
+                    <div class="invalid-feedback">Por favor ingrese un monto válido mayor a cero.</div>
                   </div>
-                  <div class="mb-3">
+                  <div class="mb-3 ingreso-only position-relative">
                     <label for="pacienteCajaModal" class="form-label">Paciente</label>
-                    <input type="text" id="pacienteCajaModal" class="form-control" />
+                    <input type="text" id="pacienteCajaModal" class="form-control" autocomplete="off" />
+                    <div id="listaCoincidenciasCaja" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 200px; overflow-y: auto; display: none;"></div>
                   </div>
-                  <div class="mb-3">
+                  <div class="mb-3 ingreso-only">
                     <label for="tipoConsultaCajaModal" class="form-label">Tipo de Consulta</label>
                     <input type="text" id="tipoConsultaCajaModal" class="form-control" />
                   </div>
@@ -2351,12 +2441,13 @@ function mostrarCaja() {
               <table class="table table-striped" style="table-layout: fixed; width: 100%;">
                 <thead>
                   <tr>
-                    <th width="15%" class="text-center">Fecha</th>
-                    <th width="10%" class="text-center">Hora</th>
-                    <th width="15%" class="text-center">Monto</th>
+                    <th width="12%" class="text-center">Fecha</th>
+                    <th width="8%" class="text-center">Hora</th>
+                    <th width="12%" class="text-center">Monto</th>
                     <th width="20%" class="text-center">Paciente</th>
                     <th width="20%" class="text-center">Tipo Consulta</th>
                     <th width="20%" class="text-center">Detalle</th>
+                    <th width="8%" class="text-center">Tipo</th>
                   </tr>
                 </thead>
                 <tbody id="tablaCaja"></tbody>
@@ -2395,7 +2486,68 @@ function mostrarCaja() {
     </div>
   `;
 
-  // Abrir modal al clickear el botón
+  // Variables para autocompletado paciente
+  let pacienteSeleccionadoId = null;
+  const inputPaciente = document.getElementById("pacienteCajaModal");
+  const contenedorCoincidencias = document.getElementById(
+    "listaCoincidenciasCaja"
+  );
+
+  // Función para filtrar pacientes y mostrar lista debajo del input
+  function filtrarPacientesCaja(texto) {
+    const textoLower = texto.toLowerCase().trim();
+    if (!textoLower) {
+      contenedorCoincidencias.style.display = "none";
+      pacienteSeleccionadoId = null;
+      return;
+    }
+
+    const coincidencias = pacientesGlobalCaja.filter((p) =>
+      p.display.toLowerCase().includes(textoLower)
+    );
+
+    if (coincidencias.length === 0) {
+      contenedorCoincidencias.style.display = "none";
+      pacienteSeleccionadoId = null;
+      return;
+    }
+
+    contenedorCoincidencias.innerHTML = coincidencias
+      .map(
+        (p) =>
+          `<button type="button" class="list-group-item list-group-item-action" data-id="${p.id}">${p.display}</button>`
+      )
+      .join("");
+
+    contenedorCoincidencias.style.display = "block";
+
+    // Agregar evento click a cada botón para seleccionar paciente
+    Array.from(contenedorCoincidencias.children).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        inputPaciente.value = btn.textContent;
+        pacienteSeleccionadoId = btn.getAttribute("data-id");
+        contenedorCoincidencias.style.display = "none";
+      });
+    });
+  }
+
+  // Evento para filtrar mientras escribís
+  inputPaciente.addEventListener("input", (e) => {
+    pacienteSeleccionadoId = null; // reset cuando cambias texto
+    filtrarPacientesCaja(e.target.value);
+  });
+
+  // Opcional: ocultar la lista al hacer click fuera del input y lista
+  document.addEventListener("click", (e) => {
+    if (
+      e.target !== inputPaciente &&
+      !contenedorCoincidencias.contains(e.target)
+    ) {
+      contenedorCoincidencias.style.display = "none";
+    }
+  });
+
+  // Eventos botones y filtros
   document
     .getElementById("btnNuevoMovimiento")
     .addEventListener("click", () => {
@@ -2403,9 +2555,9 @@ function mostrarCaja() {
         document.getElementById("modalNuevoMovimiento")
       );
       modal.show();
+      actualizarCamposMovimiento(); // <-- actualizar visibilidad campos al abrir
     });
 
-  // Botones filtros
   document.getElementById("btnHoy").addEventListener("click", () => {
     const hoyFecha = hoy();
     document.getElementById("filtroDesde").value = hoyFecha;
@@ -2433,52 +2585,98 @@ function mostrarCaja() {
     cargarCaja(desde, hasta);
   });
 
-  // Formulario modal submit
-  const formCajaModal = document.getElementById("formCajaModal");
-  formCajaModal.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  document
+    .getElementById("tipoMovimientoCajaModal")
+    .addEventListener("change", actualizarCamposMovimiento);
 
-    if (!formCajaModal.checkValidity()) {
-      formCajaModal.classList.add("was-validated");
-      return;
-    }
+  document
+    .getElementById("formCajaModal")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const fecha = document.getElementById("fechaCajaModal").value;
-    const hora = document.getElementById("horaCajaModal").value || "--:--";
-    const monto = parseFloat(document.getElementById("montoCajaModal").value);
-    const pacienteNombre = document
-      .getElementById("pacienteCajaModal")
-      .value.trim();
-    const tipoConsulta = document
-      .getElementById("tipoConsultaCajaModal")
-      .value.trim();
-    const detalle = document.getElementById("detalleCajaModal").value.trim();
+      const formCajaModal = e.target;
+      if (!formCajaModal.checkValidity()) {
+        formCajaModal.classList.add("was-validated");
+        return;
+      }
 
-    try {
-      await addDoc(collection(db, "caja"), {
-        fecha,
-        hora,
-        monto,
-        pacienteNombre: pacienteNombre || "-",
-        tipoConsulta: tipoConsulta || "-",
-        detalle: detalle || "-",
-      });
-      alert("Movimiento agregado.");
-      formCajaModal.reset();
-      formCajaModal.classList.remove("was-validated");
+      const tipoMovimiento = document.getElementById(
+        "tipoMovimientoCajaModal"
+      ).value;
+      const pacienteInputValue = inputPaciente.value.trim();
+      let pacienteId = pacienteSeleccionadoId;
+      let pacienteNombreGuardar = pacienteInputValue || "-";
 
-      const modalInstance = bootstrap.Modal.getInstance(
-        document.getElementById("modalNuevoMovimiento")
-      );
-      modalInstance.hide();
+      if (tipoMovimiento === "Ingreso" && !pacienteInputValue) {
+        alert("Debe seleccionar un paciente para un ingreso.");
+        return;
+      }
 
-      cargarCaja();
-    } catch (error) {
-      alert("Error al agregar movimiento: " + error.message);
-    }
-  });
+      if (!pacienteId && pacienteInputValue) {
+        // Intentar buscar paciente por texto exacto (por seguridad)
+        const pacienteEncontrado = pacientesGlobalCaja.find(
+          (p) => p.display.toLowerCase() === pacienteInputValue.toLowerCase()
+        );
+        if (pacienteEncontrado) {
+          pacienteId = pacienteEncontrado.id;
+          pacienteNombreGuardar = pacienteEncontrado.display;
+        } else {
+          alert("Debe seleccionar un paciente válido de la lista.");
+          return;
+        }
+      }
+
+      const fecha = document.getElementById("fechaCajaModal").value;
+      const hora = document.getElementById("horaCajaModal").value || "--:--";
+      let monto = parseFloat(document.getElementById("montoCajaModal").value);
+      const tipoConsultaInput = document
+        .getElementById("tipoConsultaCajaModal")
+        .value.trim();
+      const detalle = document.getElementById("detalleCajaModal").value.trim();
+
+      if (tipoMovimiento === "Egreso") {
+        monto = -Math.abs(monto);
+      } else {
+        monto = Math.abs(monto);
+      }
+
+      try {
+        await addDoc(collection(db, "caja"), {
+          fecha,
+          hora,
+          monto,
+          tipoMovimiento,
+          pacienteId,
+          pacienteNombre: pacienteNombreGuardar,
+          tipoConsulta: tipoConsultaInput || "-",
+          detalle: detalle || "-",
+        });
+        alert("Movimiento agregado.");
+        formCajaModal.reset();
+        formCajaModal.classList.remove("was-validated");
+        pacienteSeleccionadoId = null;
+
+        const modalInstance = bootstrap.Modal.getInstance(
+          document.getElementById("modalNuevoMovimiento")
+        );
+        modalInstance.hide();
+
+        cargarCaja();
+      } catch (error) {
+        alert("Error al agregar movimiento: " + error.message);
+      }
+    });
 
   cargarCaja();
+}
+
+function actualizarCamposMovimiento() {
+  const tipo = document.getElementById("tipoMovimientoCajaModal").value;
+  const ingresoFields = document.querySelectorAll(".ingreso-only");
+
+  ingresoFields.forEach((el) => {
+    el.style.display = tipo === "Ingreso" ? "block" : "none";
+  });
 }
 
 // --- MANEJO DEL SIDEBAR ---
@@ -2510,5 +2708,687 @@ document.querySelectorAll("#sidebar a.nav-link").forEach((link) => {
     else if (seccion === "turnos") mostrarAgendaTurnos();
     else if (seccion === "caja") mostrarCaja();
     else if (seccion === "presupuestos") mostrarPresupuestos(); // <-- Agregado aquí
+  });
+});
+
+function mostrarEstadisticas() {
+  const mainContent = document.getElementById("mainContent");
+  mainContent.innerHTML = `
+    <div class="container py-4">
+      <h2 class="mb-4 text-primary">Estadísticas del Consultorio</h2>
+
+      <!-- Filtros de Fecha -->
+      <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+        <label for="fechaDesde" class="form-label mb-0">Desde:</label>
+        <input type="date" id="fechaDesde" class="form-control" style="max-width: 180px;">
+        <label for="fechaHasta" class="form-label mb-0">Hasta:</label>
+        <input type="date" id="fechaHasta" class="form-control" style="max-width: 180px;">
+        <button id="btnFiltrarEstadisticas" class="btn btn-primary">Filtrar</button>
+      </div>
+
+      <!-- Pestañas Bootstrap -->
+      <ul class="nav nav-tabs" id="estadisticasTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-resumen" data-bs-toggle="tab" data-bs-target="#contenido-resumen" type="button" role="tab">Resumen</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-turnos" data-bs-toggle="tab" data-bs-target="#contenido-turnos" type="button" role="tab">Turnos</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-ingresos" data-bs-toggle="tab" data-bs-target="#contenido-ingresos" type="button" role="tab">Ingresos</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-pacientes" data-bs-toggle="tab" data-bs-target="#contenido-pacientes" type="button" role="tab">Pacientes</button>
+        </li>
+      </ul>
+
+      <div class="tab-content pt-3" id="estadisticasTabsContent">
+        <!-- Resumen -->
+        <div class="tab-pane fade show active" id="contenido-resumen" role="tabpanel">
+          <div class="row g-4 mb-5">
+            <div class="col-md-3">
+              <div class="card border-start-primary shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-calendar fa-2x text-primary"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-primary text-uppercase mb-1">Turnos Totales</div>
+                    <div class="h5 mb-0 fw-bold text-gray-800" id="estadisticaTurnosTotales">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-start-success shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-user fa-2x text-success"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-success text-uppercase mb-1">Pacientes Totales</div>
+                    <div class="h5 mb-0 fw-bold text-gray-800" id="estadisticaPacientes">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-start-info shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-dollar-sign fa-2x text-info"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-info text-uppercase mb-1">Ingresos Totales</div>
+                    <div class="h5 mb-0 fw-bold text-gray-800" id="estadisticaIngresosTotales">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="card border-start-warning shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-warning text-uppercase mb-1">Turnos Cancelados</div>
+                    <div class="h5 mb-0 fw-bold text-gray-800" id="estadisticaTurnosCancelados">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Turnos -->
+        <div class="tab-pane fade" id="contenido-turnos" role="tabpanel">
+          <div class="card shadow-sm mb-4">
+            <div class="card-body">
+              <h5 class="card-title">Turnos por Tipo</h5>
+              <div class="w-75 mx-auto" style="height: 300px;">
+                <canvas id="graficoTurnosPorTipo"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Asistencia y Cancelaciones</h5>
+              <div class="w-75 mx-auto" style="height: 300px;">
+                <canvas id="graficoAsistencia"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ingresos -->
+        <div class="tab-pane fade" id="contenido-ingresos" role="tabpanel">
+          <div class="card shadow-sm mb-4">
+            <div class="card-body">
+              <h5 class="card-title">Ingresos por Mes</h5>
+              <div class="w-75 mx-auto" style="height: 300px;">
+                <canvas id="graficoIngresosMensuales"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Ingresos por Tipo de Consulta</h5>
+              <div class="w-75 mx-auto" style="height: 300px;">
+                <canvas id="graficoIngresosPorConsulta"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pacientes -->
+        <div class="tab-pane fade" id="contenido-pacientes" role="tabpanel">
+          <div class="row g-4 mb-4">
+            <!-- Tarjeta Pacientes Activos -->
+            <div class="col-md-3">
+              <div class="card border-start-success shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-user-check fa-2x text-success"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-success text-uppercase mb-1">Pacientes Activos</div>
+                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesActivos">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta Pacientes Nuevos -->
+            <div class="col-md-3">
+              <div class="card border-start-primary shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-user-plus fa-2x text-primary"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-primary text-uppercase mb-1">Pacientes Nuevos (Mes)</div>
+                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesNuevos">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta Pacientes con Deuda -->
+            <div class="col-md-3">
+              <div class="card border-start-danger shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-exclamation-circle fa-2x text-danger"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-danger text-uppercase mb-1">Pacientes con Deuda</div>
+                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesConDeuda">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta Pacientes Inactivos -->
+            <div class="col-md-3">
+              <div class="card border-start-secondary shadow h-100 py-2">
+                <div class="card-body d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-clock fa-2x text-secondary"></i>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-secondary text-uppercase mb-1">Pacientes Inactivos</div>
+                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesInactivos">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráficos Pacientes en 2 columnas -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Pacientes por Género</h5>
+                  <div class="w-100" style="height: 320px;">
+                    <canvas id="graficoPacientesGenero"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                  <h5 class="card-title">Pacientes por Rango Etario</h5>
+                  <div class="w-100" style="height: 320px;">
+                    <canvas id="graficoPacientesEdad"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico Evolución Pacientes Nuevos Mensuales -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-body">
+              <h5 class="card-title">Evolución de Pacientes Nuevos por Mes</h5>
+              <div class="w-100" style="height: 320px;">
+                <canvas id="graficoEvolucionPacientes"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Carga datos inicial sin filtros
+  cargarEstadisticasConFiltros();
+
+  // Listener del botón filtrar
+  document
+    .getElementById("btnFiltrarEstadisticas")
+    .addEventListener("click", () => {
+      cargarEstadisticasConFiltros();
+    });
+}
+
+// Función para cargar datos de Estadísticas (simulados)
+async function cargarEstadisticasConFiltros() {
+  const desde = document.getElementById("fechaDesde").value;
+  const hasta = document.getElementById("fechaHasta").value;
+
+  const pacientesSnapshot = await getDocs(collection(db, "pacientes"));
+  const turnosSnapshot = await getDocs(collection(db, "turnos"));
+  const cajaSnapshot = await getDocs(collection(db, "caja"));
+
+  // Filtrar turnos según fecha
+  let turnosFiltrados = [];
+  turnosSnapshot.forEach((doc) => {
+    const turno = doc.data();
+    if ((!desde || turno.fecha >= desde) && (!hasta || turno.fecha <= hasta)) {
+      turnosFiltrados.push(turno);
+    }
+  });
+
+  // Filtrar caja ingresos según fecha
+  let cajaFiltrada = [];
+  cajaSnapshot.forEach((doc) => {
+    const mov = doc.data();
+    if (
+      mov.tipo === "ingreso" &&
+      (!desde || mov.fecha >= desde) &&
+      (!hasta || mov.fecha <= hasta)
+    ) {
+      cajaFiltrada.push(mov);
+    }
+  });
+
+  // Pacientes totales (sin filtro)
+  const totalPacientes = pacientesSnapshot.size;
+
+  // Calculos para Resumen
+  const totalTurnos = turnosFiltrados.length;
+  const turnosCancelados = turnosFiltrados.filter((t) => t.cancelado).length;
+  const totalIngresos = cajaFiltrada.reduce((acc, mov) => acc + mov.monto, 0);
+
+  // Actualizar resumen
+  document.getElementById("estadisticaTurnosTotales").innerText = totalTurnos;
+  document.getElementById("estadisticaPacientes").innerText = totalPacientes;
+  document.getElementById("estadisticaIngresosTotales").innerText =
+    "$ " + totalIngresos.toLocaleString();
+  document.getElementById("estadisticaTurnosCancelados").innerText =
+    turnosCancelados;
+
+  // --- GRÁFICOS ---
+
+  // Turnos por Tipo
+  let turnosPorTipo = {};
+  turnosFiltrados.forEach((t) => {
+    if (t.tipoConsulta) {
+      turnosPorTipo[t.tipoConsulta] = (turnosPorTipo[t.tipoConsulta] || 0) + 1;
+    }
+  });
+
+  const tipos = Object.keys(turnosPorTipo);
+  const cantidades = Object.values(turnosPorTipo);
+  const colores = [
+    "#4e73df",
+    "#1cc88a",
+    "#36b9cc",
+    "#f6c23e",
+    "#e74a3b",
+    "#858796",
+  ];
+
+  if (window.chartTurnosPorTipo) window.chartTurnosPorTipo.destroy();
+
+  window.chartTurnosPorTipo = new Chart(
+    document.getElementById("graficoTurnosPorTipo"),
+    {
+      type: "doughnut",
+      data: {
+        labels: tipos,
+        datasets: [
+          {
+            data: cantidades,
+            backgroundColor: colores.slice(0, tipos.length),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } },
+      },
+    }
+  );
+
+  // Asistencia y Cancelaciones
+  let countAsistio = 0;
+  let countAusente = 0;
+  let countCancelado = 0;
+  turnosFiltrados.forEach((t) => {
+    if (t.cancelado) countCancelado++;
+    else if (t.asistio) countAsistio++;
+    else if (t.ausente) countAusente++;
+  });
+
+  if (window.chartAsistencia) window.chartAsistencia.destroy();
+
+  window.chartAsistencia = new Chart(
+    document.getElementById("graficoAsistencia"),
+    {
+      type: "bar",
+      data: {
+        labels: ["Asistió", "Ausente", "Cancelado"],
+        datasets: [
+          {
+            label: "Cantidad",
+            data: [countAsistio, countAusente, countCancelado],
+            backgroundColor: ["#1cc88a", "#f6c23e", "#e74a3b"],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, precision: 0 } },
+      },
+    }
+  );
+
+  // Ingresos Mensuales
+  let ingresosPorMes = {};
+  cajaFiltrada.forEach((mov) => {
+    const mes = mov.fecha.substring(0, 7);
+    ingresosPorMes[mes] = (ingresosPorMes[mes] || 0) + mov.monto;
+  });
+
+  const mesesOrdenados = Object.keys(ingresosPorMes).sort();
+  const montosPorMes = mesesOrdenados.map((m) => ingresosPorMes[m]);
+
+  if (window.chartIngresosMensuales) window.chartIngresosMensuales.destroy();
+
+  window.chartIngresosMensuales = new Chart(
+    document.getElementById("graficoIngresosMensuales"),
+    {
+      type: "bar",
+      data: {
+        labels: mesesOrdenados,
+        datasets: [
+          {
+            label: "Ingresos ($)",
+            data: montosPorMes,
+            backgroundColor: "#4e73df",
+          },
+        ],
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } },
+    }
+  );
+
+  // Ingresos por Tipo de Consulta
+  let ingresosPorConsulta = {};
+  cajaFiltrada.forEach((mov) => {
+    if (mov.tipoConsulta) {
+      ingresosPorConsulta[mov.tipoConsulta] =
+        (ingresosPorConsulta[mov.tipoConsulta] || 0) + mov.monto;
+    }
+  });
+
+  const consultas = Object.keys(ingresosPorConsulta);
+  const ingresos = Object.values(ingresosPorConsulta);
+
+  if (window.chartIngresosPorConsulta)
+    window.chartIngresosPorConsulta.destroy();
+
+  window.chartIngresosPorConsulta = new Chart(
+    document.getElementById("graficoIngresosPorConsulta"),
+    {
+      type: "pie",
+      data: {
+        labels: consultas,
+        datasets: [
+          {
+            data: ingresos,
+            backgroundColor: colores.slice(0, consultas.length),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } },
+      },
+    }
+  );
+
+  // --- ESTADÍSTICAS Y GRÁFICOS DE PACIENTES ---
+
+  // Pacientes activos: definimos activos como aquellos con fechaIngreso no vacía
+  const pacientesActivos = pacientesSnapshot.docs.filter(
+    (doc) => doc.data().fechaIngreso && doc.data().fechaIngreso.trim() !== ""
+  ).length;
+
+  document.getElementById("estadisticaPacientesActivos").innerText =
+    pacientesActivos;
+
+  // Pacientes por género
+  let pacientesPorGenero = {};
+  pacientesSnapshot.forEach((doc) => {
+    const paciente = doc.data();
+    const gen = paciente.genero || "Sin definir";
+    pacientesPorGenero[gen] = (pacientesPorGenero[gen] || 0) + 1;
+  });
+
+  const generos = Object.keys(pacientesPorGenero);
+  const cantidadesGenero = Object.values(pacientesPorGenero);
+
+  if (window.chartPacientesGenero) window.chartPacientesGenero.destroy();
+
+  window.chartPacientesGenero = new Chart(
+    document.getElementById("graficoPacientesGenero"),
+    {
+      type: "doughnut",
+      data: {
+        labels: generos,
+        datasets: [
+          {
+            data: cantidadesGenero,
+            backgroundColor: colores.slice(0, generos.length),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } },
+      },
+    }
+  );
+
+  // Pacientes por rango etario (0-10,11-20,21-40,41-60, 60+)
+  function calcularEdad(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+    const hoy = new Date();
+    const nac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const m = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+  }
+
+  let edadesRango = {
+    "0-10": 0,
+    "11-20": 0,
+    "21-40": 0,
+    "41-60": 0,
+    "60+": 0,
+    "Sin datos": 0,
+  };
+
+  pacientesSnapshot.forEach((doc) => {
+    const paciente = doc.data();
+    const edad = calcularEdad(paciente.fechaNacimiento);
+    if (edad === null) {
+      edadesRango["Sin datos"]++;
+    } else if (edad <= 10) {
+      edadesRango["0-10"]++;
+    } else if (edad <= 20) {
+      edadesRango["11-20"]++;
+    } else if (edad <= 40) {
+      edadesRango["21-40"]++;
+    } else if (edad <= 60) {
+      edadesRango["41-60"]++;
+    } else {
+      edadesRango["60+"]++;
+    }
+  });
+
+  const etiquetasEdades = Object.keys(edadesRango);
+  const cantidadesEdades = Object.values(edadesRango);
+
+  if (window.chartPacientesEdad) window.chartPacientesEdad.destroy();
+
+  window.chartPacientesEdad = new Chart(
+    document.getElementById("graficoPacientesEdad"),
+    {
+      type: "bar",
+      data: {
+        labels: etiquetasEdades,
+        datasets: [
+          {
+            label: "Cantidad de Pacientes",
+            data: cantidadesEdades,
+            backgroundColor: "#36b9cc",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, precision: 0 } },
+      },
+    }
+  );
+
+  // Pacientes nuevos (por mes filtrado o mes actual)
+  const mesFiltro = desde
+    ? desde.substring(0, 7)
+    : new Date().toISOString().substring(0, 7);
+
+  const pacientesNuevos = pacientesSnapshot.docs.filter((doc) => {
+    const paciente = doc.data();
+    if (!paciente.fechaIngreso) return false;
+    return paciente.fechaIngreso.startsWith(mesFiltro);
+  }).length;
+
+  document.getElementById("estadisticaPacientesNuevos").innerText =
+    pacientesNuevos;
+
+  // Pacientes con deuda: pacientes que tengan saldo pendiente en caja (simplificado)
+  // Obtenemos pacientes con deuda sumando montos negativos o positivos faltantes
+  let deudaPorPaciente = {};
+  cajaSnapshot.forEach((doc) => {
+    const mov = doc.data();
+    if (!mov.pacienteId) return;
+    deudaPorPaciente[mov.pacienteId] =
+      (deudaPorPaciente[mov.pacienteId] || 0) +
+      mov.monto * (mov.tipo === "egreso" ? -1 : 1);
+  });
+
+  const pacientesConDeuda = Object.values(deudaPorPaciente).filter(
+    (saldo) => saldo < 0
+  ).length;
+
+  document.getElementById("estadisticaPacientesConDeuda").innerText =
+    pacientesConDeuda;
+
+  // Pacientes inactivos: sin turnos en últimos 3 meses desde hoy
+  const hoy = new Date();
+  const fechaLimite = new Date(
+    hoy.getFullYear(),
+    hoy.getMonth() - 3,
+    hoy.getDate()
+  );
+
+  // Crear mapa pacienteId => array de fechas de turnos
+  let turnosPorPaciente = {};
+  turnosSnapshot.forEach((doc) => {
+    const t = doc.data();
+    if (!t.pacienteId) return;
+    if (!turnosPorPaciente[t.pacienteId]) turnosPorPaciente[t.pacienteId] = [];
+    turnosPorPaciente[t.pacienteId].push(t.fecha);
+  });
+
+  let pacientesInactivosCount = 0;
+  pacientesSnapshot.forEach((doc) => {
+    const pacienteId = doc.id;
+    const fechasTurnos = turnosPorPaciente[pacienteId] || [];
+    // Si ninguna fecha de turno es posterior a fechaLimite => inactivo
+    const activo = fechasTurnos.some((f) => new Date(f) >= fechaLimite);
+    if (!activo) pacientesInactivosCount++;
+  });
+
+  document.getElementById("estadisticaPacientesInactivos").innerText =
+    pacientesInactivosCount;
+
+  // Gráfico Evolución Pacientes Nuevos por Mes (últimos 12 meses)
+  let pacientesPorMes = {};
+
+  // Para cada paciente, tomar su fechaIngreso, sumar uno en ese mes
+  pacientesSnapshot.forEach((doc) => {
+    const paciente = doc.data();
+    if (!paciente.fechaIngreso) return;
+    const mes = paciente.fechaIngreso.substring(0, 7); // "YYYY-MM"
+    pacientesPorMes[mes] = (pacientesPorMes[mes] || 0) + 1;
+  });
+
+  // Ordenar últimos 12 meses desde hoy
+  const mesesUltimos12 = [];
+  const fechaBase = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(fechaBase.getFullYear(), fechaBase.getMonth() - i, 1);
+    const m = d.toISOString().substring(0, 7);
+    mesesUltimos12.push(m);
+  }
+
+  const cantidadesPorMes = mesesUltimos12.map((m) => pacientesPorMes[m] || 0);
+
+  if (window.chartEvolucionPacientes) window.chartEvolucionPacientes.destroy();
+
+  window.chartEvolucionPacientes = new Chart(
+    document.getElementById("graficoEvolucionPacientes"),
+    {
+      type: "line",
+      data: {
+        labels: mesesUltimos12,
+        datasets: [
+          {
+            label: "Pacientes Nuevos",
+            data: cantidadesPorMes,
+            fill: false,
+            borderColor: "#1cc88a",
+            backgroundColor: "#1cc88a",
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, precision: 0, stepSize: 1 },
+        },
+      },
+    }
+  );
+}
+
+// Listener para capturar clicks en el Sidebar
+document.querySelectorAll("[data-section]").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const section = link.getAttribute("data-section");
+
+    if (section === "estadisticas") {
+      mostrarEstadisticas();
+    } else if (section === "pacientes") {
+      mostrarGestionPacientes();
+    } else if (section === "turnos") {
+      mostrarAgendaTurnos();
+    } else if (section === "caja") {
+      mostrarCaja();
+    } else {
+      mostrarInicio();
+    }
+
+    // Marcar como activo el link
+    document
+      .querySelectorAll("#sidebar .nav-link")
+      .forEach((l) => l.classList.remove("active"));
+    link.classList.add("active");
   });
 });

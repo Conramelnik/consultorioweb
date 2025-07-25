@@ -37,6 +37,8 @@
       </div>
 
       <div id="infoPaciente" class="mb-4"></div>
+
+      <!-- Nav tabs -->
       <ul class="nav nav-tabs" id="fichaTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button
@@ -110,7 +112,6 @@
             Recetas Médicas
           </button>
         </li>
-        <!-- NUEVA PESTAÑA PRESUPUESTOS -->
         <li class="nav-item" role="presentation">
           <button
             class="nav-link"
@@ -125,7 +126,9 @@
         </li>
       </ul>
 
+      <!-- Tab panes -->
       <div class="tab-content mt-3" id="fichaTabsContent">
+        <!-- SECCIÓN: Datos Personales -->
         <div
           class="tab-pane fade show active"
           id="datos"
@@ -135,6 +138,7 @@
           <div id="datosPaciente"></div>
         </div>
 
+        <!-- SECCIÓN: Historia Clínica -->
         <div class="tab-pane fade" id="historia" role="tabpanel" tabindex="0">
           <div class="mb-3">
             <label for="selectTurnoParaNota" class="form-label">Turno:</label>
@@ -155,14 +159,17 @@
           <ul id="listaNotasClinicas" class="list-group"></ul>
         </div>
 
+        <!-- SECCIÓN: Turnos -->
         <div class="tab-pane fade" id="turnos" role="tabpanel" tabindex="0">
           <ul id="listaTurnosPaciente" class="list-group"></ul>
         </div>
 
+        <!-- SECCIÓN: Pagos -->
         <div class="tab-pane fade" id="pagos" role="tabpanel" tabindex="0">
           <ul id="listaPagosPaciente" class="list-group"></ul>
         </div>
 
+        <!-- SECCIÓN: Imágenes y Placas -->
         <div class="tab-pane fade" id="imagenes" role="tabpanel" tabindex="0">
           <div class="mb-3">
             <label for="inputImagen" class="form-label"
@@ -228,6 +235,7 @@
           </div>
         </div>
 
+        <!-- SECCIÓN: Recetas Médicas -->
         <div class="tab-pane fade" id="recetas" role="tabpanel" tabindex="0">
           <div class="mb-3">
             <label for="inputRecetaTexto" class="form-label"
@@ -246,7 +254,7 @@
           <ul id="listaRecetas" class="list-group"></ul>
         </div>
 
-        <!-- NUEVA TAB: PRESUPUESTOS -->
+        <!-- SECCIÓN: Presupuestos -->
         <div
           class="tab-pane fade"
           id="presupuestos"
@@ -258,11 +266,12 @@
               <h4 class="fw-bold text-primary mb-0">
                 PRESUPUESTOS DEL PACIENTE
               </h4>
-        <button class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" id="btnAbrirNuevoPresupuesto">
-  + Nuevo Presupuesto
-</button>
-
-
+              <button
+                class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm"
+                id="btnAbrirNuevoPresupuesto"
+              >
+                + Nuevo Presupuesto
+              </button>
             </div>
 
             <div id="listaPresupuestosPaciente" class="d-flex gap-3 flex-wrap">
@@ -398,9 +407,9 @@
 
               <!-- Monto -->
               <div class="mb-3">
-                <label for="inputMontoPresupuesto" class="form-label"
-                  >Monto Total</label
-                >
+                <label for="inputMontoPresupuesto" class="form-label">
+                  Monto Total
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -412,9 +421,9 @@
 
               <!-- Cuotas -->
               <div class="mb-3">
-                <label for="inputCuotas" class="form-label"
-                  >Cantidad de Cuotas</label
-                >
+                <label for="inputCuotas" class="form-label">
+                  Cantidad de Cuotas
+                </label>
                 <input
                   type="number"
                   min="1"
@@ -607,7 +616,6 @@
         });
       }
 
-      // Cargar turnos del paciente
       // Cargar turnos del paciente
       async function cargarTurnos() {
         // Función para cargar presupuestos del paciente y mostrarlos en la ficha
@@ -997,14 +1005,12 @@
         const lista = document.getElementById("listaPagosPaciente");
         lista.innerHTML = "";
 
-        const nombreCompleto = `${apellidoPaciente} ${nombrePaciente}`.trim();
         const pagos = [];
 
         snapshot.forEach((docu) => {
           const pago = docu.data();
           if (
-            pago.pacienteNombre?.toLowerCase().trim() ===
-            nombreCompleto.toLowerCase()
+            String(pago.pacienteId).trim() === String(idPacienteGlobal).trim()
           ) {
             pagos.push(pago);
           }
@@ -1016,12 +1022,18 @@
           return;
         }
 
+        pagos.sort((a, b) => {
+          const fechaA = new Date(a.fecha + "T" + (a.hora || "00:00"));
+          const fechaB = new Date(b.fecha + "T" + (b.hora || "00:00"));
+          return fechaA - fechaB;
+        });
+
         pagos.forEach((p) => {
           const li = document.createElement("li");
           li.className = "list-group-item";
-          li.innerHTML = `<strong>${p.fecha}</strong> - $${p.monto.toFixed(
-            2
-          )}<br>${p.tipoConsulta || "-"}`;
+          li.innerHTML = `<strong>${p.fecha}</strong> - $${Math.abs(
+            p.monto
+          ).toFixed(2)}<br>${p.tipoConsulta || "-"}`;
           lista.appendChild(li);
         });
       }
