@@ -2808,65 +2808,28 @@ function mostrarEstadisticas() {
             </div>
           </div>
         </div>
-
-        <!-- Turnos -->
-        <div class="tab-pane fade" id="contenido-turnos" role="tabpanel">
-          <div class="card shadow-sm mb-4">
-            <div class="card-body">
-              <h5 class="card-title">Turnos por Tipo</h5>
-              <div class="w-75 mx-auto" style="height: 300px;">
-                <canvas id="graficoTurnosPorTipo"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">Asistencia y Cancelaciones</h5>
-              <div class="w-75 mx-auto" style="height: 300px;">
-                <canvas id="graficoAsistencia"></canvas>
-              </div>
-            </div>
-          </div>
+<!-- Turnos -->
+<div class="tab-pane fade" id="contenido-turnos" role="tabpanel">
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm rounded-3 h-100 border-primary">
+        <div class="card-header bg-primary text-white fw-bold rounded-top">
+          Turnos por Tipo
         </div>
-
-<!-- Ingresos -->
-<div class="tab-pane fade" id="contenido-ingresos" role="tabpanel">
-  <!-- Fila 1: Ingresos y Egresos por Mes -->
-  <div class="row mb-4">
-    <div class="col-md-6 mb-4">
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white fw-bold">Ingresos Mensuales</div>
-        <div class="card-body">
-          <canvas id="graficoIngresosMensuales" height="200"></canvas>
+        <div class="card-body d-flex justify-content-center align-items-center" style="height: 320px;">
+          <canvas id="graficoTurnosPorTipo" style="max-width: 90%; height: 100%;"></canvas>
         </div>
       </div>
     </div>
-    <div class="col-md-6 mb-4">
-      <div class="card shadow">
-        <div class="card-header bg-danger text-white fw-bold">Egresos Mensuales</div>
-        <div class="card-body">
-          <canvas id="graficoEgresosMensuales" height="200"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
 
-<!-- Fila 2: Comparativa Ingresos/Egresos y Ingresos por Tipo de Consulta -->
-<div class="row mb-4">
-  <div class="col-md-6 mb-4">
-    <div class="card shadow h-100">
-      <div class="card-header bg-info text-white fw-bold">Comparativa Ingresos vs Egresos</div>
-      <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
-        <canvas id="graficoComparativaIngresosEgresos" style="max-height: 100%; max-width: 100%;"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6 mb-4">
-    <div class="card shadow h-100">
-      <div class="card-header bg-success text-white fw-bold">Ingresos por Tipo de Consulta</div>
-      <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
-        <canvas id="graficoIngresosPorConsulta" style="max-height: 100%; max-width: 100%;"></canvas>
+    <div class="col-md-6">
+      <div class="card shadow-sm rounded-3 h-100 border-success">
+        <div class="card-header bg-success text-white fw-bold rounded-top">
+          Asistencia y Cancelaciones
+        </div>
+        <div class="card-body d-flex justify-content-center align-items-center" style="height: 320px;">
+          <canvas id="graficoAsistencia" style="width: 100%; height: 100%;"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -2874,107 +2837,143 @@ function mostrarEstadisticas() {
 
 
 
-        <!-- Pacientes -->
-        <div class="tab-pane fade" id="contenido-pacientes" role="tabpanel">
-          <div class="row g-4 mb-4">
-            <!-- Tarjeta Pacientes Activos -->
-            <div class="col-md-3">
-              <div class="card border-start-success shadow h-100 py-2">
-                <div class="card-body d-flex align-items-center">
-                  <div class="me-3">
-                    <i class="fas fa-user-check fa-2x text-success"></i>
-                  </div>
-                  <div>
-                    <div class="fw-bold text-success text-uppercase mb-1">Pacientes Activos</div>
-                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesActivos">-</div>
-                  </div>
+
+        <!-- Ingresos -->
+        <div class="tab-pane fade" id="contenido-ingresos" role="tabpanel">
+          <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+              <div class="card shadow">
+                <div class="card-header bg-primary text-white fw-bold">Ingresos Mensuales</div>
+                <div class="card-body">
+                  <canvas id="graficoIngresosMensuales" height="200"></canvas>
                 </div>
               </div>
             </div>
-
-            <!-- Tarjeta Pacientes Nuevos -->
-            <div class="col-md-3">
-              <div class="card border-start-primary shadow h-100 py-2">
-                <div class="card-body d-flex align-items-center">
-                  <div class="me-3">
-                    <i class="fas fa-user-plus fa-2x text-primary"></i>
-                  </div>
-                  <div>
-                    <div class="fw-bold text-primary text-uppercase mb-1">Pacientes Nuevos (Mes)</div>
-                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesNuevos">-</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Tarjeta Pacientes con Deuda -->
-            <div class="col-md-3">
-              <div class="card border-start-danger shadow h-100 py-2">
-                <div class="card-body d-flex align-items-center">
-                  <div class="me-3">
-                    <i class="fas fa-exclamation-circle fa-2x text-danger"></i>
-                  </div>
-                  <div>
-                    <div class="fw-bold text-danger text-uppercase mb-1">Pacientes con Deuda</div>
-                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesConDeuda">-</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Tarjeta Pacientes Inactivos -->
-            <div class="col-md-3">
-              <div class="card border-start-secondary shadow h-100 py-2">
-                <div class="card-body d-flex align-items-center">
-                  <div class="me-3">
-                    <i class="fas fa-clock fa-2x text-secondary"></i>
-                  </div>
-                  <div>
-                    <div class="fw-bold text-secondary text-uppercase mb-1">Pacientes Inactivos</div>
-                    <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesInactivos">-</div>
-                  </div>
+            <div class="col-md-6 mb-4">
+              <div class="card shadow">
+                <div class="card-header bg-danger text-white fw-bold">Egresos Mensuales</div>
+                <div class="card-body">
+                  <canvas id="graficoEgresosMensuales" height="200"></canvas>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Gráficos Pacientes en 2 columnas -->
-          <div class="row">
-            <div class="col-md-6">
-              <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                  <h5 class="card-title">Pacientes por Género</h5>
-                  <div class="w-100" style="height: 320px;">
-                    <canvas id="graficoPacientesGenero"></canvas>
-                  </div>
+          <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+              <div class="card shadow h-100">
+                <div class="card-header bg-info text-white fw-bold">Comparativa Ingresos vs Egresos</div>
+                <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
+                  <canvas id="graficoComparativaIngresosEgresos" style="max-height: 100%; max-width: 100%;"></canvas>
                 </div>
               </div>
             </div>
-
-            <div class="col-md-6">
-              <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                  <h5 class="card-title">Pacientes por Rango Etario</h5>
-                  <div class="w-100" style="height: 320px;">
-                    <canvas id="graficoPacientesEdad"></canvas>
-                  </div>
+            <div class="col-md-6 mb-4">
+              <div class="card shadow h-100">
+                <div class="card-header bg-success text-white fw-bold">Ingresos por Tipo de Consulta</div>
+                <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
+                  <canvas id="graficoIngresosPorConsulta" style="max-height: 100%; max-width: 100%;"></canvas>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Gráfico Evolución Pacientes Nuevos Mensuales -->
-          <div class="card shadow-sm mb-4">
-            <div class="card-body">
-              <h5 class="card-title">Evolución de Pacientes Nuevos por Mes</h5>
-              <div class="w-100" style="height: 320px;">
-                <canvas id="graficoEvolucionPacientes"></canvas>
               </div>
             </div>
           </div>
         </div>
+
+    <!-- Pacientes -->
+<div class="tab-pane fade" id="contenido-pacientes" role="tabpanel">
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card border-start-success shadow h-100 py-2">
+        <div class="card-body d-flex align-items-center">
+          <div class="me-3">
+            <i class="fas fa-user-check fa-2x text-success"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-success text-uppercase mb-1">Pacientes Activos</div>
+            <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesActivos">-</div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <div class="col-md-3">
+      <div class="card border-start-primary shadow h-100 py-2">
+        <div class="card-body d-flex align-items-center">
+          <div class="me-3">
+            <i class="fas fa-user-plus fa-2x text-primary"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-primary text-uppercase mb-1">Pacientes Nuevos (Mes)</div>
+            <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesNuevos">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-start-danger shadow h-100 py-2">
+        <div class="card-body d-flex align-items-center">
+          <div class="me-3">
+            <i class="fas fa-exclamation-circle fa-2x text-danger"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-danger text-uppercase mb-1">Pacientes con Deuda</div>
+            <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesConDeuda">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-start-secondary shadow h-100 py-2">
+        <div class="card-body d-flex align-items-center">
+          <div class="me-3">
+            <i class="fas fa-clock fa-2x text-secondary"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-secondary text-uppercase mb-1">Pacientes Inactivos</div>
+            <div class="h4 mb-0 fw-bold text-gray-800" id="estadisticaPacientesInactivos">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm rounded-3 h-100 border-info">
+        <div class="card-header bg-info text-white fw-bold rounded-top">
+          Pacientes por Género
+        </div>
+        <div class="card-body d-flex justify-content-center align-items-center" style="height: 320px;">
+          <canvas id="graficoPacientesGenero" style="max-width: 90%; height: 100%;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm rounded-3 h-100 border-primary">
+        <div class="card-header bg-primary text-white fw-bold rounded-top">
+          Pacientes por Rango Etario
+        </div>
+        <div class="card-body d-flex justify-content-center align-items-center" style="height: 320px;">
+          <canvas id="graficoPacientesEdad" style="max-width: 90%; height: 100%;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+ <div class="card shadow-sm rounded-3 border-success mt-4">
+  <div class="card-header bg-success text-white fw-bold rounded-top">
+    Evolución de Pacientes Nuevos por Mes
+  </div>
+  <div class="card-body d-flex justify-content-center align-items-center" style="height: 400px;">
+    <canvas id="graficoEvolucionPacientes" style="max-width: 95%; height: 100%;"></canvas>
+  </div>
+</div>
+
+
+
   `;
 
   // Carga datos inicial sin filtros
@@ -3022,12 +3021,11 @@ async function cargarEstadisticasConFiltros() {
   cajaSnapshot.forEach((doc) => {
     const mov = doc.data();
     if ((!desde || mov.fecha >= desde) && (!hasta || mov.fecha <= hasta)) {
-    if (mov.monto >= 0) {
-  cajaFiltradaIngresos.push(mov);
-} else {
-  cajaFiltradaEgresos.push(mov);
-}
-
+      if (mov.monto >= 0) {
+        cajaFiltradaIngresos.push(mov);
+      } else {
+        cajaFiltradaEgresos.push(mov);
+      }
     }
   });
 
@@ -3416,6 +3414,7 @@ async function cargarEstadisticasConFiltros() {
     }
   );
 }
+
 
 // Listener para capturar clicks en el Sidebar
 document.querySelectorAll("[data-section]").forEach((link) => {
