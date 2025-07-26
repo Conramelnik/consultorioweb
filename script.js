@@ -1921,170 +1921,175 @@ async function mostrarAgendaTurnos() {
   cargarPacientesSelect();
   cargarTurnosPaginados();
 
- const horaTurno = document.getElementById("horaTurno");
-const minutosTurno = document.getElementById("minutosTurno");
-const fechaTurno = document.getElementById("fechaTurno");
+  const horaTurno = document.getElementById("horaTurno");
+  const minutosTurno = document.getElementById("minutosTurno");
+  const fechaTurno = document.getElementById("fechaTurno");
 
-// Horas y minutos fijos
-const horas = Array.from({ length: 15 }, (_, i) => (i + 7).toString().padStart(2, "0"));
-const minutos = ["00", "15", "30", "45"];
+  // Horas y minutos fijos
+  const horas = Array.from({ length: 15 }, (_, i) =>
+    (i + 7).toString().padStart(2, "0")
+  );
+  const minutos = ["00", "15", "30", "45"];
 
-fechaTurno.addEventListener("change", async () => {
-  const fecha = fechaTurno.value;
-  if (!fecha) return;
-
-  const turnosSnapshot = await getDocs(collection(db, "turnos"));
-  const horasDisponibles = new Set(horas);
-
-  // Limpiar minutos hasta que se elija hora
-  minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
-
-  turnosSnapshot.forEach((doc) => {
-    const t = doc.data();
-    if (t.fecha !== fecha) return;
-
-    const inicio = new Date(`${t.fecha}T${t.hora}`);
-    const duracion = Number(t.duracionMinutos) || 15;
-    const fin = new Date(inicio.getTime() + duracion * 60000);
-
-    // Marcar como ocupadas las horas completas si tienen minutos solapados
-    let bloque = new Date(inicio);
-    while (bloque < fin) {
-      const h = bloque.getHours().toString().padStart(2, "0");
-      horasDisponibles.add(h); // Nos aseguramos de que estén todas (en caso de errores previos)
-      bloque = new Date(bloque.getTime() + 15 * 60000);
-    }
-  });
-
-  // Renderizar las horas disponibles (en todas las horas va a filtrar después los minutos)
-  horaTurno.innerHTML = `<option value="" disabled selected>Hora</option>`;
-  horas.forEach((h) => {
-    const opt = document.createElement("option");
-    opt.value = h;
-    opt.textContent = h;
-    horaTurno.appendChild(opt);
-  });
-});
-
-horaTurno.addEventListener("change", async () => {
-  const horaSeleccionada = horaTurno.value;
-  const fecha = fechaTurno.value;
-  if (!horaSeleccionada || !fecha) return;
-
-  const turnosSnapshot = await getDocs(collection(db, "turnos"));
-  const minutosOcupados = new Set();
-
-  turnosSnapshot.forEach((doc) => {
-    const t = doc.data();
-    if (t.fecha !== fecha) return;
-
-    const duracion = Number(t.duracionMinutos) || 15;
-    const inicio = new Date(`${t.fecha}T${t.hora}`);
-    const fin = new Date(inicio.getTime() + duracion * 60000);
-
-    let bloque = new Date(inicio);
-    while (bloque < fin) {
-      const h = bloque.getHours().toString().padStart(2, "0");
-      const m = bloque.getMinutes().toString().padStart(2, "0");
-      if (h === horaSeleccionada) {
-        minutosOcupados.add(m);
-      }
-      bloque = new Date(bloque.getTime() + 15 * 60000);
-    }
-  });
-
-  // Renderizar minutos disponibles
-  minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
-  minutos.forEach((m) => {
-    if (!minutosOcupados.has(m)) {
-      const opt = document.createElement("option");
-      opt.value = m;
-      opt.textContent = m;
-      minutosTurno.appendChild(opt);
-    }
-  });
-
-  if (minutosTurno.options.length === 1) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "Sin minutos disponibles";
-    minutosTurno.appendChild(opt);
-  }
-});
-
-document.getElementById("formTurno").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  try {
+  fechaTurno.addEventListener("change", async () => {
     const fecha = fechaTurno.value;
-    const hora = horaTurno.value;
-    const minuto = minutosTurno.value;
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    const tipoConsulta = document.getElementById("tipoConsulta").value;
-    const duracion = parseInt(document.getElementById("duracionTurno").value, 10);
+    if (!fecha) return;
 
-    if (!fecha || !hora || !minuto || !pacienteId || isNaN(duracion)) {
-      alert("Completá todos los campos obligatorios.");
-      return;
-    }
-
-    const horaCompleta = `${hora}:${minuto}`;
-
-    // Validar superposición al guardar (doble chequeo)
     const turnosSnapshot = await getDocs(collection(db, "turnos"));
-    const inicioNuevo = new Date(`${fecha}T${horaCompleta}`);
-    const finNuevo = new Date(inicioNuevo.getTime() + duracion * 60000);
+    const horasDisponibles = new Set(horas);
 
-    let superpuesto = false;
+    // Limpiar minutos hasta que se elija hora
+    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+
     turnosSnapshot.forEach((doc) => {
       const t = doc.data();
       if (t.fecha !== fecha) return;
 
-      const inicioExistente = new Date(`${t.fecha}T${t.hora}`);
-      const duracionExistente = Number(t.duracionMinutos) || 15;
-      const finExistente = new Date(inicioExistente.getTime() + duracionExistente * 60000);
+      const inicio = new Date(`${t.fecha}T${t.hora}`);
+      const duracion = Number(t.duracionMinutos) || 15;
+      const fin = new Date(inicio.getTime() + duracion * 60000);
 
-      if (inicioNuevo < finExistente && finNuevo > inicioExistente) {
-        superpuesto = true;
+      // Marcar como ocupadas las horas completas si tienen minutos solapados
+      let bloque = new Date(inicio);
+      while (bloque < fin) {
+        const h = bloque.getHours().toString().padStart(2, "0");
+        horasDisponibles.add(h); // Nos aseguramos de que estén todas (en caso de errores previos)
+        bloque = new Date(bloque.getTime() + 15 * 60000);
       }
     });
 
-    if (superpuesto) {
-      alert("Ese horario se superpone con otro turno.");
-      return;
-    }
+    // Renderizar las horas disponibles (en todas las horas va a filtrar después los minutos)
+    horaTurno.innerHTML = `<option value="" disabled selected>Hora</option>`;
+    horas.forEach((h) => {
+      const opt = document.createElement("option");
+      opt.value = h;
+      opt.textContent = h;
+      horaTurno.appendChild(opt);
+    });
+  });
 
-    const pacienteDoc = await getDoc(doc(db, "pacientes", pacienteId));
-    if (!pacienteDoc.exists()) {
-      alert("Paciente no encontrado.");
-      return;
-    }
+  horaTurno.addEventListener("change", async () => {
+    const horaSeleccionada = horaTurno.value;
+    const fecha = fechaTurno.value;
+    if (!horaSeleccionada || !fecha) return;
 
-    const paciente = pacienteDoc.data();
+    const turnosSnapshot = await getDocs(collection(db, "turnos"));
+    const minutosOcupados = new Set();
 
-    await addDoc(collection(db, "turnos"), {
-      fecha,
-      hora: horaCompleta,
-      pacienteId,
-      pacienteNombre: `${paciente.apellido} ${paciente.nombre}`,
-      tipoConsulta,
-      duracionMinutos: duracion,
-      asistio: false,
-      cancelado: false,
-      ausente: false,
-      montoAbonado: 0,
+    turnosSnapshot.forEach((doc) => {
+      const t = doc.data();
+      if (t.fecha !== fecha) return;
+
+      const duracion = Number(t.duracionMinutos) || 15;
+      const inicio = new Date(`${t.fecha}T${t.hora}`);
+      const fin = new Date(inicio.getTime() + duracion * 60000);
+
+      let bloque = new Date(inicio);
+      while (bloque < fin) {
+        const h = bloque.getHours().toString().padStart(2, "0");
+        const m = bloque.getMinutes().toString().padStart(2, "0");
+        if (h === horaSeleccionada) {
+          minutosOcupados.add(m);
+        }
+        bloque = new Date(bloque.getTime() + 15 * 60000);
+      }
     });
 
-    alert("Turno guardado correctamente.");
-    e.target.reset();
-    cargarTurnosPaginados();
-  } catch (error) {
-    console.error("Error al agregar el turno:", error);
-    alert("Error al agregar el turno: " + error.message);
-  }
-});
+    // Renderizar minutos disponibles
+    minutosTurno.innerHTML = `<option value="" disabled selected>Minutos</option>`;
+    minutos.forEach((m) => {
+      if (!minutosOcupados.has(m)) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        minutosTurno.appendChild(opt);
+      }
+    });
 
+    if (minutosTurno.options.length === 1) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "Sin minutos disponibles";
+      minutosTurno.appendChild(opt);
+    }
+  });
 
+  document.getElementById("formTurno").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    try {
+      const fecha = fechaTurno.value;
+      const hora = horaTurno.value;
+      const minuto = minutosTurno.value;
+      const pacienteId = document.getElementById("pacienteSelect").value;
+      const tipoConsulta = document.getElementById("tipoConsulta").value;
+      const duracion = parseInt(
+        document.getElementById("duracionTurno").value,
+        10
+      );
+
+      if (!fecha || !hora || !minuto || !pacienteId || isNaN(duracion)) {
+        alert("Completá todos los campos obligatorios.");
+        return;
+      }
+
+      const horaCompleta = `${hora}:${minuto}`;
+
+      // Validar superposición al guardar (doble chequeo)
+      const turnosSnapshot = await getDocs(collection(db, "turnos"));
+      const inicioNuevo = new Date(`${fecha}T${horaCompleta}`);
+      const finNuevo = new Date(inicioNuevo.getTime() + duracion * 60000);
+
+      let superpuesto = false;
+      turnosSnapshot.forEach((doc) => {
+        const t = doc.data();
+        if (t.fecha !== fecha) return;
+
+        const inicioExistente = new Date(`${t.fecha}T${t.hora}`);
+        const duracionExistente = Number(t.duracionMinutos) || 15;
+        const finExistente = new Date(
+          inicioExistente.getTime() + duracionExistente * 60000
+        );
+
+        if (inicioNuevo < finExistente && finNuevo > inicioExistente) {
+          superpuesto = true;
+        }
+      });
+
+      if (superpuesto) {
+        alert("Ese horario se superpone con otro turno.");
+        return;
+      }
+
+      const pacienteDoc = await getDoc(doc(db, "pacientes", pacienteId));
+      if (!pacienteDoc.exists()) {
+        alert("Paciente no encontrado.");
+        return;
+      }
+
+      const paciente = pacienteDoc.data();
+
+      await addDoc(collection(db, "turnos"), {
+        fecha,
+        hora: horaCompleta,
+        pacienteId,
+        pacienteNombre: `${paciente.apellido} ${paciente.nombre}`,
+        tipoConsulta,
+        duracionMinutos: duracion,
+        asistio: false,
+        cancelado: false,
+        ausente: false,
+        montoAbonado: 0,
+      });
+
+      alert("Turno guardado correctamente.");
+      e.target.reset();
+      cargarTurnosPaginados();
+    } catch (error) {
+      console.error("Error al agregar el turno:", error);
+      alert("Error al agregar el turno: " + error.message);
+    }
+  });
 
   // --- FILTROS ---
   // Reemplazamos este bloque por el siguiente:
@@ -2825,26 +2830,49 @@ function mostrarEstadisticas() {
           </div>
         </div>
 
-        <!-- Ingresos -->
-        <div class="tab-pane fade" id="contenido-ingresos" role="tabpanel">
-          <div class="card shadow-sm mb-4">
-            <div class="card-body">
-              <h5 class="card-title">Ingresos por Mes</h5>
-              <div class="w-75 mx-auto" style="height: 300px;">
-                <canvas id="graficoIngresosMensuales"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">Ingresos por Tipo de Consulta</h5>
-              <div class="w-75 mx-auto" style="height: 300px;">
-                <canvas id="graficoIngresosPorConsulta"></canvas>
-              </div>
-            </div>
-          </div>
+<!-- Ingresos -->
+<div class="tab-pane fade" id="contenido-ingresos" role="tabpanel">
+  <!-- Fila 1: Ingresos y Egresos por Mes -->
+  <div class="row mb-4">
+    <div class="col-md-6 mb-4">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white fw-bold">Ingresos Mensuales</div>
+        <div class="card-body">
+          <canvas id="graficoIngresosMensuales" height="200"></canvas>
         </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card shadow">
+        <div class="card-header bg-danger text-white fw-bold">Egresos Mensuales</div>
+        <div class="card-body">
+          <canvas id="graficoEgresosMensuales" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Fila 2: Comparativa Ingresos/Egresos y Ingresos por Tipo de Consulta -->
+<div class="row mb-4">
+  <div class="col-md-6 mb-4">
+    <div class="card shadow h-100">
+      <div class="card-header bg-info text-white fw-bold">Comparativa Ingresos vs Egresos</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
+        <canvas id="graficoComparativaIngresosEgresos" style="max-height: 100%; max-width: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 mb-4">
+    <div class="card shadow h-100">
+      <div class="card-header bg-success text-white fw-bold">Ingresos por Tipo de Consulta</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="height: 380px;">
+        <canvas id="graficoIngresosPorConsulta" style="max-height: 100%; max-width: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
         <!-- Pacientes -->
         <div class="tab-pane fade" id="contenido-pacientes" role="tabpanel">
@@ -2960,7 +2988,6 @@ function mostrarEstadisticas() {
     });
 }
 
-// Función para cargar datos de Estadísticas (simulados)
 async function cargarEstadisticasConFiltros() {
   const desde = document.getElementById("fechaDesde").value;
   const hasta = document.getElementById("fechaHasta").value;
@@ -2969,7 +2996,17 @@ async function cargarEstadisticasConFiltros() {
   const turnosSnapshot = await getDocs(collection(db, "turnos"));
   const cajaSnapshot = await getDocs(collection(db, "caja"));
 
-  // Filtrar turnos según fecha
+  // Colores para gráficos
+  const colores = [
+    "#4e73df",
+    "#1cc88a",
+    "#36b9cc",
+    "#f6c23e",
+    "#e74a3b",
+    "#858796",
+  ];
+
+  // Filtrar turnos por fecha
   let turnosFiltrados = [];
   turnosSnapshot.forEach((doc) => {
     const turno = doc.data();
@@ -2978,28 +3015,40 @@ async function cargarEstadisticasConFiltros() {
     }
   });
 
-  // Filtrar caja ingresos según fecha
-  let cajaFiltrada = [];
+  // Filtrar caja ingresos y egresos según fecha y tipoMovimiento (igual que en Caja)
+  let cajaFiltradaIngresos = [];
+  let cajaFiltradaEgresos = [];
+
   cajaSnapshot.forEach((doc) => {
     const mov = doc.data();
-    if (
-      mov.tipo === "ingreso" &&
-      (!desde || mov.fecha >= desde) &&
-      (!hasta || mov.fecha <= hasta)
-    ) {
-      cajaFiltrada.push(mov);
+    if ((!desde || mov.fecha >= desde) && (!hasta || mov.fecha <= hasta)) {
+    if (mov.monto >= 0) {
+  cajaFiltradaIngresos.push(mov);
+} else {
+  cajaFiltradaEgresos.push(mov);
+}
+
     }
   });
 
-  // Pacientes totales (sin filtro)
+  // Totales pacientes sin filtro
   const totalPacientes = pacientesSnapshot.size;
 
-  // Calculos para Resumen
+  // Resumen calculado
   const totalTurnos = turnosFiltrados.length;
   const turnosCancelados = turnosFiltrados.filter((t) => t.cancelado).length;
-  const totalIngresos = cajaFiltrada.reduce((acc, mov) => acc + mov.monto, 0);
 
-  // Actualizar resumen
+  // Sumar montos (tomar valor absoluto para egresos, porque en caja son negativos)
+  const totalIngresos = cajaFiltradaIngresos.reduce(
+    (acc, mov) => acc + mov.monto,
+    0
+  );
+  const totalEgresos = cajaFiltradaEgresos.reduce(
+    (acc, mov) => acc + Math.abs(mov.monto),
+    0
+  );
+
+  // Actualizar resumen en HTML
   document.getElementById("estadisticaTurnosTotales").innerText = totalTurnos;
   document.getElementById("estadisticaPacientes").innerText = totalPacientes;
   document.getElementById("estadisticaIngresosTotales").innerText =
@@ -3016,20 +3065,9 @@ async function cargarEstadisticasConFiltros() {
       turnosPorTipo[t.tipoConsulta] = (turnosPorTipo[t.tipoConsulta] || 0) + 1;
     }
   });
-
   const tipos = Object.keys(turnosPorTipo);
   const cantidades = Object.values(turnosPorTipo);
-  const colores = [
-    "#4e73df",
-    "#1cc88a",
-    "#36b9cc",
-    "#f6c23e",
-    "#e74a3b",
-    "#858796",
-  ];
-
   if (window.chartTurnosPorTipo) window.chartTurnosPorTipo.destroy();
-
   window.chartTurnosPorTipo = new Chart(
     document.getElementById("graficoTurnosPorTipo"),
     {
@@ -3037,10 +3075,7 @@ async function cargarEstadisticasConFiltros() {
       data: {
         labels: tipos,
         datasets: [
-          {
-            data: cantidades,
-            backgroundColor: colores.slice(0, tipos.length),
-          },
+          { data: cantidades, backgroundColor: colores.slice(0, tipos.length) },
         ],
       },
       options: {
@@ -3051,17 +3086,15 @@ async function cargarEstadisticasConFiltros() {
   );
 
   // Asistencia y Cancelaciones
-  let countAsistio = 0;
-  let countAusente = 0;
-  let countCancelado = 0;
+  let countAsistio = 0,
+    countAusente = 0,
+    countCancelado = 0;
   turnosFiltrados.forEach((t) => {
     if (t.cancelado) countCancelado++;
     else if (t.asistio) countAsistio++;
     else if (t.ausente) countAusente++;
   });
-
   if (window.chartAsistencia) window.chartAsistencia.destroy();
-
   window.chartAsistencia = new Chart(
     document.getElementById("graficoAsistencia"),
     {
@@ -3083,18 +3116,31 @@ async function cargarEstadisticasConFiltros() {
     }
   );
 
-  // Ingresos Mensuales
+  // Ingresos Mensuales (igual que Caja)
   let ingresosPorMes = {};
-  cajaFiltrada.forEach((mov) => {
+  cajaFiltradaIngresos.forEach((mov) => {
     const mes = mov.fecha.substring(0, 7);
     ingresosPorMes[mes] = (ingresosPorMes[mes] || 0) + mov.monto;
   });
 
-  const mesesOrdenados = Object.keys(ingresosPorMes).sort();
-  const montosPorMes = mesesOrdenados.map((m) => ingresosPorMes[m]);
+  // Egresos Mensuales (usar valor absoluto)
+  let egresosPorMes = {};
+  cajaFiltradaEgresos.forEach((mov) => {
+    const mes = mov.fecha.substring(0, 7);
+    egresosPorMes[mes] = (egresosPorMes[mes] || 0) + Math.abs(mov.monto);
+  });
+
+  // Meses combinados y ordenados
+  const mesesSet = new Set([
+    ...Object.keys(ingresosPorMes),
+    ...Object.keys(egresosPorMes),
+  ]);
+  const mesesOrdenados = Array.from(mesesSet).sort();
+
+  const montosPorMes = mesesOrdenados.map((m) => ingresosPorMes[m] || 0);
+  const egresosMontosPorMes = mesesOrdenados.map((m) => egresosPorMes[m] || 0);
 
   if (window.chartIngresosMensuales) window.chartIngresosMensuales.destroy();
-
   window.chartIngresosMensuales = new Chart(
     document.getElementById("graficoIngresosMensuales"),
     {
@@ -3113,21 +3159,61 @@ async function cargarEstadisticasConFiltros() {
     }
   );
 
+  if (window.chartEgresosMensuales) window.chartEgresosMensuales.destroy();
+  window.chartEgresosMensuales = new Chart(
+    document.getElementById("graficoEgresosMensuales"),
+    {
+      type: "bar",
+      data: {
+        labels: mesesOrdenados,
+        datasets: [
+          {
+            label: "Egresos ($)",
+            data: egresosMontosPorMes,
+            backgroundColor: "#e74a3b",
+          },
+        ],
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } },
+    }
+  );
+
+  if (window.chartComparativaIngresosEgresos)
+    window.chartComparativaIngresosEgresos.destroy();
+  window.chartComparativaIngresosEgresos = new Chart(
+    document.getElementById("graficoComparativaIngresosEgresos"),
+    {
+      type: "bar",
+      data: {
+        labels: mesesOrdenados,
+        datasets: [
+          {
+            label: "Ingresos",
+            data: montosPorMes,
+            backgroundColor: "rgba(78, 115, 223, 0.7)",
+          },
+          {
+            label: "Egresos",
+            data: egresosMontosPorMes,
+            backgroundColor: "rgba(231, 74, 59, 0.7)",
+          },
+        ],
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } },
+    }
+  );
+
   // Ingresos por Tipo de Consulta
   let ingresosPorConsulta = {};
-  cajaFiltrada.forEach((mov) => {
-    if (mov.tipoConsulta) {
-      ingresosPorConsulta[mov.tipoConsulta] =
-        (ingresosPorConsulta[mov.tipoConsulta] || 0) + mov.monto;
-    }
+  cajaFiltradaIngresos.forEach((mov) => {
+    const tipo = mov.tipoConsulta || "Sin Tipo de Consulta";
+    ingresosPorConsulta[tipo] = (ingresosPorConsulta[tipo] || 0) + mov.monto;
   });
 
   const consultas = Object.keys(ingresosPorConsulta);
   const ingresos = Object.values(ingresosPorConsulta);
-
   if (window.chartIngresosPorConsulta)
     window.chartIngresosPorConsulta.destroy();
-
   window.chartIngresosPorConsulta = new Chart(
     document.getElementById("graficoIngresosPorConsulta"),
     {
@@ -3150,11 +3236,10 @@ async function cargarEstadisticasConFiltros() {
 
   // --- ESTADÍSTICAS Y GRÁFICOS DE PACIENTES ---
 
-  // Pacientes activos: definimos activos como aquellos con fechaIngreso no vacía
+  // Pacientes activos (con fechaIngreso)
   const pacientesActivos = pacientesSnapshot.docs.filter(
     (doc) => doc.data().fechaIngreso && doc.data().fechaIngreso.trim() !== ""
   ).length;
-
   document.getElementById("estadisticaPacientesActivos").innerText =
     pacientesActivos;
 
@@ -3165,12 +3250,9 @@ async function cargarEstadisticasConFiltros() {
     const gen = paciente.genero || "Sin definir";
     pacientesPorGenero[gen] = (pacientesPorGenero[gen] || 0) + 1;
   });
-
   const generos = Object.keys(pacientesPorGenero);
   const cantidadesGenero = Object.values(pacientesPorGenero);
-
   if (window.chartPacientesGenero) window.chartPacientesGenero.destroy();
-
   window.chartPacientesGenero = new Chart(
     document.getElementById("graficoPacientesGenero"),
     {
@@ -3191,7 +3273,7 @@ async function cargarEstadisticasConFiltros() {
     }
   );
 
-  // Pacientes por rango etario (0-10,11-20,21-40,41-60, 60+)
+  // Pacientes por rango etario
   function calcularEdad(fechaNacimiento) {
     if (!fechaNacimiento) return null;
     const hoy = new Date();
@@ -3201,7 +3283,6 @@ async function cargarEstadisticasConFiltros() {
     if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
     return edad;
   }
-
   let edadesRango = {
     "0-10": 0,
     "11-20": 0,
@@ -3210,30 +3291,19 @@ async function cargarEstadisticasConFiltros() {
     "60+": 0,
     "Sin datos": 0,
   };
-
   pacientesSnapshot.forEach((doc) => {
     const paciente = doc.data();
     const edad = calcularEdad(paciente.fechaNacimiento);
-    if (edad === null) {
-      edadesRango["Sin datos"]++;
-    } else if (edad <= 10) {
-      edadesRango["0-10"]++;
-    } else if (edad <= 20) {
-      edadesRango["11-20"]++;
-    } else if (edad <= 40) {
-      edadesRango["21-40"]++;
-    } else if (edad <= 60) {
-      edadesRango["41-60"]++;
-    } else {
-      edadesRango["60+"]++;
-    }
+    if (edad === null) edadesRango["Sin datos"]++;
+    else if (edad <= 10) edadesRango["0-10"]++;
+    else if (edad <= 20) edadesRango["11-20"]++;
+    else if (edad <= 40) edadesRango["21-40"]++;
+    else if (edad <= 60) edadesRango["41-60"]++;
+    else edadesRango["60+"]++;
   });
-
   const etiquetasEdades = Object.keys(edadesRango);
   const cantidadesEdades = Object.values(edadesRango);
-
   if (window.chartPacientesEdad) window.chartPacientesEdad.destroy();
-
   window.chartPacientesEdad = new Chart(
     document.getElementById("graficoPacientesEdad"),
     {
@@ -3255,47 +3325,40 @@ async function cargarEstadisticasConFiltros() {
     }
   );
 
-  // Pacientes nuevos (por mes filtrado o mes actual)
+  // Pacientes nuevos (mes filtro o mes actual)
   const mesFiltro = desde
     ? desde.substring(0, 7)
     : new Date().toISOString().substring(0, 7);
-
   const pacientesNuevos = pacientesSnapshot.docs.filter((doc) => {
     const paciente = doc.data();
     if (!paciente.fechaIngreso) return false;
     return paciente.fechaIngreso.startsWith(mesFiltro);
   }).length;
-
   document.getElementById("estadisticaPacientesNuevos").innerText =
     pacientesNuevos;
 
-  // Pacientes con deuda: pacientes que tengan saldo pendiente en caja (simplificado)
-  // Obtenemos pacientes con deuda sumando montos negativos o positivos faltantes
+  // Pacientes con deuda
   let deudaPorPaciente = {};
   cajaSnapshot.forEach((doc) => {
     const mov = doc.data();
     if (!mov.pacienteId) return;
     deudaPorPaciente[mov.pacienteId] =
       (deudaPorPaciente[mov.pacienteId] || 0) +
-      mov.monto * (mov.tipo === "egreso" ? -1 : 1);
+      mov.monto * (mov.tipoMovimiento === "Egreso" ? -1 : 1);
   });
-
   const pacientesConDeuda = Object.values(deudaPorPaciente).filter(
     (saldo) => saldo < 0
   ).length;
-
   document.getElementById("estadisticaPacientesConDeuda").innerText =
     pacientesConDeuda;
 
-  // Pacientes inactivos: sin turnos en últimos 3 meses desde hoy
+  // Pacientes inactivos: sin turnos últimos 3 meses
   const hoy = new Date();
   const fechaLimite = new Date(
     hoy.getFullYear(),
     hoy.getMonth() - 3,
     hoy.getDate()
   );
-
-  // Crear mapa pacienteId => array de fechas de turnos
   let turnosPorPaciente = {};
   turnosSnapshot.forEach((doc) => {
     const t = doc.data();
@@ -3303,43 +3366,32 @@ async function cargarEstadisticasConFiltros() {
     if (!turnosPorPaciente[t.pacienteId]) turnosPorPaciente[t.pacienteId] = [];
     turnosPorPaciente[t.pacienteId].push(t.fecha);
   });
-
   let pacientesInactivosCount = 0;
   pacientesSnapshot.forEach((doc) => {
     const pacienteId = doc.id;
     const fechasTurnos = turnosPorPaciente[pacienteId] || [];
-    // Si ninguna fecha de turno es posterior a fechaLimite => inactivo
     const activo = fechasTurnos.some((f) => new Date(f) >= fechaLimite);
     if (!activo) pacientesInactivosCount++;
   });
-
   document.getElementById("estadisticaPacientesInactivos").innerText =
     pacientesInactivosCount;
 
-  // Gráfico Evolución Pacientes Nuevos por Mes (últimos 12 meses)
+  // Evolución pacientes nuevos últimos 12 meses
   let pacientesPorMes = {};
-
-  // Para cada paciente, tomar su fechaIngreso, sumar uno en ese mes
   pacientesSnapshot.forEach((doc) => {
     const paciente = doc.data();
     if (!paciente.fechaIngreso) return;
-    const mes = paciente.fechaIngreso.substring(0, 7); // "YYYY-MM"
+    const mes = paciente.fechaIngreso.substring(0, 7);
     pacientesPorMes[mes] = (pacientesPorMes[mes] || 0) + 1;
   });
-
-  // Ordenar últimos 12 meses desde hoy
   const mesesUltimos12 = [];
   const fechaBase = new Date();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(fechaBase.getFullYear(), fechaBase.getMonth() - i, 1);
-    const m = d.toISOString().substring(0, 7);
-    mesesUltimos12.push(m);
+    mesesUltimos12.push(d.toISOString().substring(0, 7));
   }
-
   const cantidadesPorMes = mesesUltimos12.map((m) => pacientesPorMes[m] || 0);
-
   if (window.chartEvolucionPacientes) window.chartEvolucionPacientes.destroy();
-
   window.chartEvolucionPacientes = new Chart(
     document.getElementById("graficoEvolucionPacientes"),
     {
@@ -3359,9 +3411,7 @@ async function cargarEstadisticasConFiltros() {
       },
       options: {
         responsive: true,
-        scales: {
-          y: { beginAtZero: true, precision: 0, stepSize: 1 },
-        },
+        scales: { y: { beginAtZero: true, precision: 0, stepSize: 1 } },
       },
     }
   );
