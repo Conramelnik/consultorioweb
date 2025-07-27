@@ -807,113 +807,105 @@ function agregarEventosVerFicha() {
 function mostrarGestionPacientes() {
   mainContent.innerHTML = `
     <style>
-      table.table tbody tr {
-        height: 50px;
-      }
-      table.table th,
-      table.table td {
-        padding: 12px 15px;
-        vertical-align: middle;
-      }
-      #buscadorPacientes {
-        max-width: 300px;
-      }
-      #btnNuevoPaciente {
-        white-space: nowrap;
-      }
-      body {
+      #seccionPacientes {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-size: 14px;
       }
-      .row {
+      #seccionPacientes .row {
         column-gap: 30px;
       }
-      .col-lg-3 {
+      #seccionPacientes .col-lg-3 {
         max-width: 220px;
         flex: 0 0 220px;
       }
-      .text-end {
+      #seccionPacientes .text-end {
         text-align: right !important;
       }
-
-      /* Filtro con botón */
-      #filtroPacientesNuevosContainer {
+      #seccionPacientes #buscadorPacientes {
+        max-width: 300px;
+      }
+      #seccionPacientes #btnNuevoPaciente {
+        white-space: nowrap;
+      }
+      #seccionPacientes #filtroPacientesNuevosContainer {
         display: flex;
         align-items: center;
         gap: 15px;
         margin-bottom: 15px;
         flex-wrap: wrap;
       }
-      #filtroPacientesNuevosFechas label {
+      #seccionPacientes #filtroPacientesNuevosFechas label {
         margin-right: 5px;
       }
-      #filtroPacientesNuevosFechas input {
+      #seccionPacientes #filtroPacientesNuevosFechas input {
         margin-right: 15px;
         max-width: 140px;
       }
     </style>
 
-    <div class="row">
-      <div class="col-lg-8">
-        <div id="tituloPacientes" class="d-flex justify-content-between align-items-center mb-3">
-          <h2 class="mb-0">Mis Pacientes</h2>
-          <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              + Nuevo
-            </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#" id="opcionNuevoPaciente">Nuevo Paciente</a></li>
-              <li><a class="dropdown-item" href="#" id="opcionNuevoPresupuesto">Nuevo Presupuesto</a></li>
-            </ul>
+    <div id="seccionPacientes">
+      <div class="row">
+        <div class="col-lg-8">
+          <div id="tituloPacientes" class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Mis Pacientes</h2>
+            <div class="dropdown">
+              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                + Nuevo
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" id="opcionNuevoPaciente">Nuevo Paciente</a></li>
+                <li><a class="dropdown-item" href="#" id="opcionNuevoPresupuesto">Nuevo Presupuesto</a></li>
+              </ul>
+            </div>
           </div>
-        </div>
 
-        <div id="contenedorBuscadorBtn" class="d-flex gap-2 mb-3">
-          <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
-        </div>
-
-        <div id="filtroPacientesNuevosContainer">
-          <button class="btn btn-outline-secondary" id="btnFiltrarNuevos">Ver pacientes nuevos</button>
-          <div id="filtroPacientesNuevosFechas">
-            <label for="fechaDesde">Desde:</label>
-            <input type="date" id="fechaDesde" />
-            <label for="fechaHasta">Hasta:</label>
-            <input type="date" id="fechaHasta" />
+          <div id="contenedorBuscadorBtn" class="d-flex gap-2 mb-3">
+            <input type="text" class="form-control" id="buscadorPacientes" placeholder="Buscar paciente..." />
           </div>
-        </div>
 
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Apellido</th>
-              <th>Nombre</th>
-              <th>DNI</th>
-              <th>Teléfono</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tablaPacientes"></tbody>
-        </table>
-
-        <div id="paginacionPacientes" class="d-flex justify-content-center mb-3"></div>
-        <div id="contenedorFichaPaciente" style="display:none; margin-top: 1rem;"></div>
-      </div>
-
-      <div id="estadisticasPacientes" class="col-lg-3">
-        <div class="card mb-3">
-          <div class="card-body">
-            <h5 class="card-title">Pacientes totales</h5>
-            <p id="estadisticaTotal" class="card-text fw-bold">0</p>
+          <div id="filtroPacientesNuevosContainer">
+            <button class="btn btn-outline-secondary" id="btnFiltrarNuevos">Ver pacientes nuevos</button>
+            <div id="filtroPacientesNuevosFechas">
+              <label for="fechaDesde">Desde:</label>
+              <input type="date" id="fechaDesde" />
+              <label for="fechaHasta">Hasta:</label>
+              <input type="date" id="fechaHasta" />
+            </div>
           </div>
+
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Apellido</th>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Teléfono</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaPacientes"></tbody>
+          </table>
+
+          <div id="paginacionPacientes" class="d-flex justify-content-center mb-3"></div>
+          <div id="contenedorFichaPaciente" style="display:none; margin-top: 1rem;"></div>
         </div>
-        <div class="card mb-3">
-          <div class="card-body">
-            <h5 class="card-title">Balance de género</h5>
-            <ul class="list-group list-group-flush">
-              <li class="list-group-item">Masculino: <span id="estadisticaMasculino">0</span></li>
-              <li class="list-group-item">Femenino: <span id="estadisticaFemenino">0</span></li>
-              <li class="list-group-item">Otro: <span id="estadisticaOtro">0</span></li>
-            </ul>
+
+        <div id="estadisticasPacientes" class="col-lg-3">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Pacientes totales</h5>
+              <p id="estadisticaTotal" class="card-text fw-bold">0</p>
+            </div>
+          </div>
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Balance de género</h5>
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item">Masculino: <span id="estadisticaMasculino">0</span></li>
+                <li class="list-group-item">Femenino: <span id="estadisticaFemenino">0</span></li>
+                <li class="list-group-item">Otro: <span id="estadisticaOtro">0</span></li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -926,9 +918,7 @@ function mostrarGestionPacientes() {
   const fechaDesde = document.getElementById("fechaDesde");
   const fechaHasta = document.getElementById("fechaHasta");
   const opcionNuevoPaciente = document.getElementById("opcionNuevoPaciente");
-  const opcionNuevoPresupuesto = document.getElementById(
-    "opcionNuevoPresupuesto"
-  );
+  const opcionNuevoPresupuesto = document.getElementById("opcionNuevoPresupuesto");
 
   let filtroNuevosActivo = false;
 
@@ -936,31 +926,6 @@ function mostrarGestionPacientes() {
     e.preventDefault();
     abrirModalPaciente();
   });
-
-  // Aquí abrimos el modal Presupuesto cuando clickean esa opción:
-  const modalPresupuestoEl = document.getElementById("modalPresupuesto");
-  const modalPresupuesto = new bootstrap.Modal(modalPresupuestoEl);
-
-  // Referencias inputs modal Presupuesto
-  const inputFecha = document.getElementById("presupuestoFecha");
-  const selectTratamiento = document.getElementById("presupuestoTratamiento");
-  const selectCuotas = document.getElementById("presupuestoCuotas");
-  const inputMontoPorCuota = document.getElementById("montoPorCuota");
-  const inputTotalPresupuesto = document.getElementById("totalPresupuesto");
-  const inputPaciente = document.getElementById("presupuestoPaciente");
-
-  function abrirModalPresupuesto() {
-    // Setear valores iniciales al abrir modal
-    const hoy = new Date().toISOString().split("T")[0];
-    inputFecha.value = hoy;
-    selectTratamiento.value = "";
-    selectCuotas.value = "1";
-    inputMontoPorCuota.value = "0";
-    inputTotalPresupuesto.value = "0";
-    inputPaciente.value = "";
-
-    modalPresupuesto.show();
-  }
 
   opcionNuevoPresupuesto.addEventListener("click", (e) => {
     e.preventDefault();
@@ -982,10 +947,7 @@ function mostrarGestionPacientes() {
   btnFiltrarNuevos.addEventListener("click", () => {
     filtroNuevosActivo = !filtroNuevosActivo;
 
-    btnFiltrarNuevos.classList.toggle(
-      "btn-outline-secondary",
-      !filtroNuevosActivo
-    );
+    btnFiltrarNuevos.classList.toggle("btn-outline-secondary", !filtroNuevosActivo);
     btnFiltrarNuevos.classList.toggle("btn-secondary", filtroNuevosActivo);
 
     if (filtroNuevosActivo) {
@@ -1032,6 +994,7 @@ function mostrarGestionPacientes() {
 
   cargarPacientes();
 }
+
 
 function mostrarFormularioEdicion(id, paciente) {
   pacienteEditandoId = id;
@@ -3440,4 +3403,12 @@ document.querySelectorAll("[data-section]").forEach((link) => {
       .forEach((l) => l.classList.remove("active"));
     link.classList.add("active");
   });
+});
+
+// Inicializa los tooltips de Bootstrap para todos los elementos que tengan atributo 'title'
+document.addEventListener("DOMContentLoaded", function () {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+  })
 });

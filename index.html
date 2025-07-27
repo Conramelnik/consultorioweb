@@ -44,6 +44,8 @@
       }
     </style>
 
+<link rel="stylesheet" href="styles.css" />
+
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -92,35 +94,38 @@
     </nav>
 
     <div class="d-flex vh-100">
-      <!-- Sidebar -->
-      <nav id="sidebar" class="bg-light border-end p-3">
-        <h3>Consultorio</h3>
-        <ul class="nav nav-pills flex-column">
-          <li class="nav-item mb-2">
-            <a href="#" class="nav-link active" data-section="inicio">Inicio</a>
-          </li>
-          <li class="nav-item mb-2">
-            <a
-              href="#"
-              class="nav-link"
-              data-section="pacientes"
-              id="linkPacientes"
-              >Pacientes</a
-            >
-          </li>
-          <li class="nav-item mb-2">
-            <a href="#" class="nav-link" data-section="turnos">Turnos</a>
-          </li>
-          <li class="nav-item mb-2">
-            <a href="#" class="nav-link" data-section="caja">Caja</a>
-          </li>
-          <li class="nav-item mb-2">
-            <a href="#" class="nav-link" data-section="estadisticas"
-              >Estadísticas</a
-            >
-          </li>
-        </ul>
-      </nav>
+<!-- Sidebar -->
+<nav id="sidebar" class="bg-light border-end p-3 d-flex flex-column align-items-center">
+  <h3 class="mb-4"></h3>
+  <ul class="nav flex-column gap-4">
+    <li class="nav-item">
+      <a href="#" class="nav-link active d-flex justify-content-center" data-section="inicio" title="Inicio">
+        <i class="fas fa-home"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" class="nav-link d-flex justify-content-center" data-section="pacientes" id="linkPacientes" title="Pacientes">
+        <i class="fas fa-users"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" class="nav-link d-flex justify-content-center" data-section="turnos" title="Turnos">
+        <i class="fas fa-calendar-check"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" class="nav-link d-flex justify-content-center" data-section="caja" title="Caja">
+        <i class="fas fa-cash-register"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="#" class="nav-link d-flex justify-content-center" data-section="estadisticas" title="Estadísticas">
+        <i class="fas fa-chart-bar"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+
 
       <!-- Main content -->
       <main id="mainContent" class="flex-grow-1 p-4 overflow-auto"></main>
